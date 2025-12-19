@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser, getDefaultBrand } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { z } from 'zod';
-import { generateKey, getUploadUrl, uploadFromUrl } from '@/lib/r2';
+import { uploadBuffer, BUCKETS } from '@/lib/storage';
 import type { Prisma } from '@prisma/client';
 
 const createProductSchema = z.object({
@@ -127,20 +127,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Brand not found' }, { status: 404 });
     }
 
-    // Handle image URL
+    // Handle image URL - upload to Supabase Storage if external URL
     let originalUrl = imageUrl || '';
     let thumbnailUrl = imageUrl || '';
 
     if (imageUrl && imageUrl.startsWith('http')) {
-      const isR2Configured =
-        process.env.R2_ENDPOINT &&
-        process.env.R2_ACCESS_KEY &&
-        !process.env.R2_ENDPOINT.includes('example');
+      try {
+        // Fetch the image and upload to Supabase
+        const response = await fetch(imageUrl);
+        const buffer = Buffer.from(await response.arrayBuffer());
+        const contentType = response.headers.get('content-type') || 'image/jpeg';
+        const ext = contentType.includes('png') ? 'png' : contentType.includes('webp') ? 'webp' : 'jpg';
+        const filename = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
-      if (isR2Configured) {
-        const key = generateKey('products', 'product.jpg');
-        originalUrl = await uploadFromUrl(key, imageUrl);
-        thumbnailUrl = originalUrl;
+        const { url } = await uploadBuffer(BUCKETS.UPLOADS, buffer, filename, contentType);
+        originalUrl = url;
+        thumbnailUrl = url;
+      } catch (uploadError) {
+        console.warn('Failed to upload to Supabase, using original URL:', uploadError);
+        // Keep original URL as fallback
       }
     }
 
@@ -162,7 +167,8 @@ export async function POST(req: NextRequest) {
 }
 
 /**
- * PUT /api/v1/products - Get presigned upload URL
+ * PUT /api/v1/products - Upload endpoint info
+ * Note: Direct uploads should use POST /api/v1/upload instead
  */
 export async function PUT(req: NextRequest) {
   try {
@@ -171,26 +177,13 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await req.json();
-    const { filename, contentType } = body;
-
-    if (!filename || !contentType) {
-      return NextResponse.json(
-        { error: 'filename and contentType are required' },
-        { status: 400 }
-      );
-    }
-
-    const key = generateKey('products', filename);
-    const uploadUrl = await getUploadUrl(key, contentType);
-
+    // Redirect to use the upload endpoint instead
     return NextResponse.json({
-      uploadUrl,
-      key,
-      publicUrl: `${process.env.R2_PUBLIC_URL}/${key}`,
+      message: 'Use POST /api/v1/upload for file uploads',
+      uploadEndpoint: '/api/v1/upload',
     });
   } catch (error) {
-    console.error('Error generating upload URL:', error);
+    console.error('Error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

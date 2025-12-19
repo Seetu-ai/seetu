@@ -6,6 +6,7 @@ import { constructPrompt, buildNegativePrompt, selectPipeline } from '@/lib/prom
 import { getCleanReferenceUrl } from '@/lib/image-processing';
 import { debitCredits } from '@/lib/credits';
 import { checkRateLimit, getRateLimitKey, RATE_LIMITS, rateLimitResponse } from '@/lib/rate-limit';
+import { uploadGeneratedImage } from '@/lib/storage';
 import type { WizardBrief } from '@/lib/stores/wizard-store';
 import type { BrandDNA, VerbalDNA, ProductAnalysis } from '@/types';
 
@@ -154,6 +155,7 @@ export async function POST(req: NextRequest) {
     const outputUrl = await generateWithGemini(
       prompt,
       productImageUrl,
+      user.id,
       brief.scene.backgroundUrl,
       brief.moodboard.url,
       brief.iterationFeedback,
@@ -270,6 +272,7 @@ export async function POST(req: NextRequest) {
 async function generateWithGemini(
   prompt: string,
   productImageUrl: string,
+  userId: string,
   backgroundUrl?: string,
   moodboardUrl?: string,
   iterationFeedback?: string,
@@ -391,19 +394,11 @@ Create a photorealistic, commercial-quality image that looks like it was shot by
       for (const part of responseParts) {
         if ((part as any).inlineData) {
           const inlineData = (part as any).inlineData;
-
-          const filename = `wizard-${Date.now()}-${Math.random().toString(36).slice(2)}.png`;
-          const fs = await import('fs/promises');
-          const path = await import('path');
-
-          const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'studio');
-          await fs.mkdir(uploadDir, { recursive: true });
-
           const buffer = Buffer.from(inlineData.data, 'base64');
-          await fs.writeFile(path.join(uploadDir, filename), buffer);
 
-          const outputUrl = `/uploads/studio/${filename}`;
-          console.log('[STUDIO] Image saved to:', outputUrl);
+          // Upload to Supabase Storage
+          const { url: outputUrl } = await uploadGeneratedImage(buffer, userId);
+          console.log('[STUDIO] Image saved to Supabase:', outputUrl);
           return outputUrl;
         }
       }
