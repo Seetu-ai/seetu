@@ -159,6 +159,19 @@ export interface SessionUser {
   avatarUrl: string | null;
 }
 
+// Permissions type (for role-based access)
+export interface Permissions {
+  canView: boolean;
+  canCreate: boolean;
+  canDelete: boolean;
+  canPurchaseCredits: boolean;
+  canManageTeam: boolean;
+  canEditSettings: boolean;
+  canDeleteWorkspace: boolean;
+  roleName: string;
+  roleDescription: string;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // BRAND DNA TYPES - For AI Generation Pipeline
 // ═══════════════════════════════════════════════════════════════
