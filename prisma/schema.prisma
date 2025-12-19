@@ -1,0 +1,463 @@
+// CABINE.AI v4 - Simplified Brand-Centric Schema
+// AI Photo Studio for African Businesses
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ENUMS
+// ═══════════════════════════════════════════════════════════════
+
+enum BusinessType {
+  fashion
+  food
+  beauty
+  realestate
+  other
+}
+
+enum ShootStatus {
+  draft
+  in_progress
+  completed
+  archived
+}
+
+enum JobType {
+  product_photo
+  promo
+  model
+  caption
+}
+
+enum JobMode {
+  preview    // 512px, 50 units
+  final      // 1024px, 100 units
+  final_4k   // 2048px, 200 units
+}
+
+enum JobStatus {
+  queued
+  processing
+  completed
+  failed
+}
+
+enum TransactionStatus {
+  pending
+  completed
+  failed
+}
+
+enum PaymentMethod {
+  wave
+  orange_money
+  visa
+  free_trial
+  bonus
+}
+
+// ═══════════════════════════════════════════════════════════════
+// USER - The primary entity (owns brands, credits, etc.)
+// ═══════════════════════════════════════════════════════════════
+
+model User {
+  id              String        @id @default(uuid())
+  authId          String        @unique @map("auth_id") // Supabase Auth UUID
+  email           String        @unique
+  name            String?
+  avatarUrl       String?       @map("avatar_url")
+
+  // Credits & Plan (moved from Workspace)
+  creditUnits     Int           @default(300) @map("credit_units") // 300 = 3 crédits gratuits
+  plan            String        @default("free")
+  businessType    BusinessType? @map("business_type")
+
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  brands          Brand[]
+  shoots          Shoot[]       @relation("ShootCreator")
+  creditLedger    CreditLedger[]
+  transactions    Transaction[]
+  exportJobs      ExportJob[]
+  studioSessions  StudioSession[]
+
+  @@map("users")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BRAND - The business identity (visual + verbal DNA)
+// ═══════════════════════════════════════════════════════════════
+
+model Brand {
+  id              String    @id @default(uuid())
+  userId          String    @map("user_id")
+  name            String
+  instagramHandle String?   @map("instagram_handle")
+  isDefault       Boolean   @default(false) @map("is_default")
+
+  // Full Brand DNA (visual + verbal)
+  visualDNA       Json?     @map("visual_dna")
+  // Structure: { colorPalette, typography, imageryStyle, composition }
+
+  verbalDNA       Json?     @map("verbal_dna")
+  // Structure: { tone, primary_language, emoji_palette, exemplars, cta_style, etc. }
+
+  // Original analyzed data
+  analyzedAt      DateTime? @map("analyzed_at")
+  analysisSource  String?   @map("analysis_source") // "instagram", "manual", etc.
+
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  products        Product[]
+
+  @@index([userId])
+  @@map("brands")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CREDIT LEDGER (Audit Trail)
+// ═══════════════════════════════════════════════════════════════
+
+model CreditLedger {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  delta        Int      // +500 ou -100 (en unités)
+  balanceAfter Int      @map("balance_after")
+  reason       String   // purchase, generation, refund, bonus, quick_generate, multi_format
+  refType      String?  @map("ref_type") // transaction, generation_job, export_job
+  refId        String?  @map("ref_id")
+  description  String?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("credit_ledger")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PRODUCTS - Belong to a Brand
+// ═══════════════════════════════════════════════════════════════
+
+model Product {
+  id           String   @id @default(uuid())
+  brandId      String   @map("brand_id")
+  name         String?
+  originalUrl  String   @map("original_url")
+  thumbnailUrl String   @map("thumbnail_url")
+  nobgUrl      String?  @map("nobg_url")
+  metadata     Json     @default("{}")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  brand           Brand           @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  jobs            GenerationJob[]
+  studioSessions  StudioSession[]
+
+  @@index([brandId])
+  @@map("products")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TEMPLATES
+// ═══════════════════════════════════════════════════════════════
+
+model TemplatePack {
+  id           String       @id @default(uuid())
+  slug         String       @unique
+  name         String
+  vertical     BusinessType
+  description  String?
+  thumbnailUrl String?      @map("thumbnail_url")
+  version      String       @default("1.0.0")
+  isActive     Boolean      @default(true) @map("is_active")
+  isDefault    Boolean      @default(false) @map("is_default")
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  templates    Template[]
+  shoots       Shoot[]
+
+  @@map("template_packs")
+}
+
+model Template {
+  id             String   @id @default(uuid())
+  packId         String   @map("pack_id")
+  slug           String
+  name           String
+  type           JobType
+  thumbnailUrl   String?  @map("thumbnail_url")
+  prompt         String
+  negativePrompt String?  @map("negative_prompt")
+  systemPrompt   String?  @map("system_prompt")
+  variables      Json     @default("{}")
+  defaultParams  Json     @default("{}") @map("default_params")
+  version        Int      @default(1)
+  isActive       Boolean  @default(true) @map("is_active")
+  sortOrder      Int      @default(0) @map("sort_order")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  pack           TemplatePack    @relation(fields: [packId], references: [id], onDelete: Cascade)
+  jobs           GenerationJob[]
+
+  @@unique([packId, slug])
+  @@map("templates")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SHOOTS & JOBS
+// ═══════════════════════════════════════════════════════════════
+
+model Shoot {
+  id                 String      @id @default(uuid())
+  userId             String      @map("user_id")
+  templatePackId     String      @map("template_pack_id")
+  name               String
+  description        String?
+  styleSeed          Int?        @map("style_seed")
+  styleLock          Json?       @map("style_lock")
+  fidelityPercent    Int         @default(70) @map("fidelity_percent") // 0-100
+  defaultAspectRatio String      @default("1:1") @map("default_aspect_ratio")
+  status             ShootStatus @default(draft)
+  isQuickGenerate    Boolean     @default(false) @map("is_quick_generate")
+  totalJobs          Int         @default(0) @map("total_jobs")
+  completedJobs      Int         @default(0) @map("completed_jobs")
+  creditsUsed        Int         @default(0) @map("credits_used") // En unités
+  createdAt          DateTime    @default(now()) @map("created_at")
+  updatedAt          DateTime    @updatedAt @map("updated_at")
+
+  user               User            @relation("ShootCreator", fields: [userId], references: [id], onDelete: Cascade)
+  templatePack       TemplatePack    @relation(fields: [templatePackId], references: [id])
+  jobs               GenerationJob[]
+  exportJobs         ExportJob[]
+
+  @@index([userId, status])
+  @@map("shoots")
+}
+
+model GenerationJob {
+  id             String    @id @default(uuid())
+  idempotencyKey String    @unique @map("idempotency_key") // Anti-doublon
+  shootId        String    @map("shoot_id")
+  productId      String?   @map("product_id")
+  templateId     String    @map("template_id")
+  type           JobType
+  mode           JobMode   @default(preview)
+  status         JobStatus @default(queued)
+  priority       Int       @default(5)
+  inputParams    Json      @default("{}") @map("input_params")
+  promptUsed     String?   @map("prompt_used")
+  seedUsed       Int?      @map("seed_used")
+  outputUrl      String?   @map("output_url")
+  outputText     String?   @map("output_text")
+  creditsCost    Int       @default(100) @map("credits_cost") // En unités
+  retryCount     Int       @default(0) @map("retry_count")
+  errorMessage   String?   @map("error_message")
+  approved       Boolean?  // Pour swipe approve/reject
+  queuedAt       DateTime  @default(now()) @map("queued_at")
+  startedAt      DateTime? @map("started_at")
+  completedAt    DateTime? @map("completed_at")
+
+  shoot          Shoot     @relation(fields: [shootId], references: [id], onDelete: Cascade)
+  product        Product?  @relation(fields: [productId], references: [id])
+  template       Template  @relation(fields: [templateId], references: [id])
+
+  @@index([shootId, status])
+  @@index([status, priority])
+  @@map("generation_jobs")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EXPORT JOBS
+// ═══════════════════════════════════════════════════════════════
+
+model ExportJob {
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  shootId      String?   @map("shoot_id")
+  jobIds       String[]  @map("job_ids")
+  format       String    @default("zip")
+  status       JobStatus @default(queued)
+  outputUrl    String?   @map("output_url")
+  signedUrl    String?   @map("signed_url")
+  signedUrlExp DateTime? @map("signed_url_exp")
+  fileSize     Int?      @map("file_size")
+  errorMessage String?   @map("error_message")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  completedAt  DateTime? @map("completed_at")
+
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shoot        Shoot?    @relation(fields: [shootId], references: [id])
+
+  @@map("export_jobs")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TRANSACTIONS
+// ═══════════════════════════════════════════════════════════════
+
+model Transaction {
+  id               String            @id @default(uuid())
+  userId           String            @map("user_id")
+  amountFcfa       Int               @map("amount_fcfa")
+  creditsPurchased Int               @map("credits_purchased") // En crédits affichés
+  unitsToAdd       Int               @map("units_to_add")      // En unités (×100)
+  paymentMethod    PaymentMethod     @map("payment_method")
+  status           TransactionStatus @default(pending)
+  externalRef      String?           @unique @map("external_ref")
+  checkoutUrl      String?           @map("checkout_url")
+  metadata         Json              @default("{}")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("transactions")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STUDIO - Smart Generation Pipeline
+// ═══════════════════════════════════════════════════════════════
+
+enum BackgroundType {
+  real_place    // Real Senegalese locations
+  studio        // Professional studio backgrounds
+  lifestyle     // Lifestyle/ambient scenes
+  custom        // User uploaded backgrounds
+}
+
+enum PlacementType {
+  table
+  model
+  floor
+  shelf
+  hanging
+  custom
+}
+
+enum PresentationType {
+  product_only  // Flat lay / packshot
+  on_model      // Worn by model
+  ghost         // Ghost mannequin
+}
+
+model Background {
+  id           String         @id @default(uuid())
+  slug         String         @unique
+  name         String
+  nameFr       String         @map("name_fr")
+  type         BackgroundType
+  category     String         // e.g., "beach", "urban", "interior", "market"
+  imageUrl     String         @map("image_url")
+  thumbnailUrl String         @map("thumbnail_url")
+
+  // Metadata for harmonization
+  lighting     String         // e.g., "natural_daylight", "golden_hour", "studio_soft"
+  mood         String         // e.g., "warm", "professional", "vibrant", "luxe"
+  colors       String[]       // Dominant colors for matching
+
+  // Location info (for real places)
+  location     String?        // e.g., "Dakar", "Saly", "Saint-Louis"
+  landmark     String?        // e.g., "Sea Plaza", "Corniche", "Marché Sandaga"
+
+  // Generation hints
+  promptHints  String?        @map("prompt_hints")
+  negativeHints String?       @map("negative_hints")
+
+  // Pre-calculated lighting analysis from Gemini
+  lightingData Json?          @map("lighting_data")
+  // Structure: { direction: "right", temperature: "warm", intensity: "soft", shadows: "natural" }
+
+  isActive     Boolean        @default(true) @map("is_active")
+  isPremium    Boolean        @default(false) @map("is_premium")
+  sortOrder    Int            @default(0) @map("sort_order")
+  createdAt    DateTime       @default(now()) @map("created_at")
+
+  studioSessions StudioSession[]
+
+  @@index([type, isActive])
+  @@map("backgrounds")
+}
+
+model StudioSession {
+  id              String    @id @default(uuid())
+  userId          String    @map("user_id")
+
+  // ═══════════════════════════════════════════════════════════════
+  // WIZARD STATE - The Structured Brief
+  // ═══════════════════════════════════════════════════════════════
+
+  // Step 1: Products
+  productId       String?   @map("product_id")
+  productAnalysis Json?     @map("product_analysis")
+  // Structure: { category, name, colors[], materials[], style, description }
+
+  // Step 2: Presentation
+  presentation    PresentationType?  @default(product_only)
+  presentationDetails String?        @map("presentation_details")
+  // e.g., "Senegalese woman model, waist-up shot"
+
+  // Step 3: Scene
+  backgroundId    String?   @map("background_id")
+  sceneType       String?   @map("scene_type")  // "real_place", "ai_generated", "studio"
+
+  // Step 4: Moodboard
+  moodboardUrl    String?   @map("moodboard_url")
+  styleInstruction String?  @map("style_instruction")
+  // e.g., "Copy golden hour lighting, Vogue aesthetic"
+
+  // ═══════════════════════════════════════════════════════════════
+  // MODIFIERS - The "Chat Magic" (per-step notes)
+  // ═══════════════════════════════════════════════════════════════
+  modifiers       Json      @default("{}")
+  // Structure: {
+  //   "product_note": "Make it blue, zoom on buckle",
+  //   "presentation_note": "Model smiling, casual pose",
+  //   "scene_note": "Night time, rainy",
+  //   "style_note": "Warm tones, editorial"
+  // }
+
+  // ═══════════════════════════════════════════════════════════════
+  // CANVAS STATE - Product positioning on canvas
+  // ═══════════════════════════════════════════════════════════════
+  canvasState     Json?     @map("canvas_state")
+  // Structure: { x, y, scale, rotation }
+
+  // ═══════════════════════════════════════════════════════════════
+  // WIZARD PROGRESS
+  // ═══════════════════════════════════════════════════════════════
+  currentStep     Int       @default(1) @map("current_step")  // 1-4
+  completedSteps  Int[]     @default([]) @map("completed_steps")
+
+  // ═══════════════════════════════════════════════════════════════
+  // GENERATION OUTPUT
+  // ═══════════════════════════════════════════════════════════════
+  finalPrompt     String?   @map("final_prompt")
+  generatedUrls   String[]  @default([]) @map("generated_urls")
+  selectedUrl     String?   @map("selected_url")
+
+  // Status & Meta
+  status          String    @default("active") // active, generating, completed, abandoned
+  creditsCost     Int       @default(0) @map("credits_cost")
+
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product         Product?    @relation(fields: [productId], references: [id])
+  background      Background? @relation(fields: [backgroundId], references: [id])
+
+  @@index([userId, status])
+  @@map("studio_sessions")
+}

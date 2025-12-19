@@ -1,0 +1,261 @@
+import { PrismaClient, BackgroundType } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+// Using Unsplash images as placeholders - replace with your own images
+const backgrounds = [
+  // ═══════════════════════════════════════════════════════════════
+  // REAL PLACES - Dakar
+  // ═══════════════════════════════════════════════════════════════
+  {
+    slug: 'sea-plaza-terrace',
+    name: 'Sea Plaza Terrace',
+    nameFr: 'Terrasse Sea Plaza',
+    type: BackgroundType.real_place,
+    category: 'urban',
+    imageUrl: 'https://images.unsplash.com/photo-1590523741831-ab7e8b8f9c7f?w=1200',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1590523741831-ab7e8b8f9c7f?w=400',
+    lighting: 'natural_daylight',
+    mood: 'luxe',
+    colors: ['beige', 'blue', 'white'],
+    location: 'Dakar',
+    landmark: 'Sea Plaza',
+    promptHints: 'upscale shopping mall terrace, ocean view, modern architecture, Dakar',
+    negativeHints: 'crowded, messy, low quality',
+    isPremium: false,
+    sortOrder: 1,
+  },
+  {
+    slug: 'corniche-sunset',
+    name: 'Corniche at Sunset',
+    nameFr: 'Corniche au Coucher du Soleil',
+    type: BackgroundType.real_place,
+    category: 'beach',
+    imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400',
+    lighting: 'golden_hour',
+    mood: 'warm',
+    colors: ['orange', 'gold', 'blue'],
+    location: 'Dakar',
+    landmark: 'Corniche Ouest',
+    promptHints: 'Dakar coastline, golden sunset, Atlantic ocean, palm trees, warm lighting',
+    negativeHints: 'rain, overcast, cold',
+    isPremium: false,
+    sortOrder: 2,
+  },
+  {
+    slug: 'plateau-streets',
+    name: 'Plateau District',
+    nameFr: 'Quartier du Plateau',
+    type: BackgroundType.real_place,
+    category: 'urban',
+    imageUrl: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=1200',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=400',
+    lighting: 'natural_daylight',
+    mood: 'professional',
+    colors: ['white', 'beige', 'green'],
+    location: 'Dakar',
+    landmark: 'Le Plateau',
+    promptHints: 'colonial architecture, tree-lined streets, business district, professional atmosphere',
+    negativeHints: 'run-down, dirty, crowded',
+    isPremium: false,
+    sortOrder: 3,
+  },
+  {
+    slug: 'marche-sandaga',
+    name: 'Sandaga Market',
+    nameFr: 'Marché Sandaga',
+    type: BackgroundType.real_place,
+    category: 'market',
+    imageUrl: 'https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=1200',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=400',
+    lighting: 'natural_daylight',
+    mood: 'vibrant',
+    colors: ['colorful', 'earth tones', 'blue'],
+    location: 'Dakar',
+    landmark: 'Marché Sandaga',
+    promptHints: 'vibrant African market, colorful fabrics, authentic Senegalese atmosphere',
+    negativeHints: 'empty, boring, western',
+    isPremium: false,
+    sortOrder: 4,
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // REAL PLACES - Saly & Coast
+  // ═══════════════════════════════════════════════════════════════
+  {
+    slug: 'saly-beach',
+    name: 'Saly Beach',
+    nameFr: 'Plage de Saly',
+    type: BackgroundType.real_place,
+    category: 'beach',
+    imageUrl: 'https://images.unsplash.com/photo-1473116763249-2faaef81ccda?w=1200',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1473116763249-2faaef81ccda?w=400',
+    lighting: 'natural_daylight',
+    mood: 'warm',
+    colors: ['sand', 'turquoise', 'blue'],
+    location: 'Saly',
+    landmark: 'Plage de Saly',
+    promptHints: 'pristine beach, turquoise water, fine sand, tropical paradise, Senegal coast',
+    negativeHints: 'cold, grey, overcast',
+    isPremium: false,
+    sortOrder: 5,
+  },
+  {
+    slug: 'lac-rose',
+    name: 'Pink Lake',
+    nameFr: 'Lac Rose',
+    type: BackgroundType.real_place,
+    category: 'nature',
+    imageUrl: 'https://images.unsplash.com/photo-1682686581362-7c79e0d0a7a6?w=1200',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1682686581362-7c79e0d0a7a6?w=400',
+    lighting: 'natural_daylight',
+    mood: 'vibrant',
+    colors: ['pink', 'white', 'blue'],
+    location: 'Lac Rose',
+    landmark: 'Lac Retba',
+    promptHints: 'famous pink lake, salt flats, unique landscape, iconic Senegal destination',
+    negativeHints: 'dull, grey, polluted',
+    isPremium: true,
+    sortOrder: 6,
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // STUDIO BACKGROUNDS
+  // ═══════════════════════════════════════════════════════════════
+  {
+    slug: 'studio-white',
+    name: 'Clean White Studio',
+    nameFr: 'Studio Blanc Épuré',
+    type: BackgroundType.studio,
+    category: 'studio',
+    imageUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400',
+    lighting: 'studio_soft',
+    mood: 'professional',
+    colors: ['white', 'grey'],
+    promptHints: 'pure white background, soft diffused lighting, professional product photography, e-commerce style',
+    negativeHints: 'shadows, texture, color cast',
+    isPremium: false,
+    sortOrder: 10,
+  },
+  {
+    slug: 'studio-gradient',
+    name: 'Soft Gradient',
+    nameFr: 'Dégradé Doux',
+    type: BackgroundType.studio,
+    category: 'studio',
+    imageUrl: 'https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=1200',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=400',
+    lighting: 'studio_soft',
+    mood: 'luxe',
+    colors: ['grey', 'white', 'beige'],
+    promptHints: 'soft gradient background, elegant lighting, luxury product photography',
+    negativeHints: 'harsh shadows, flat lighting',
+    isPremium: false,
+    sortOrder: 11,
+  },
+  {
+    slug: 'studio-terracotta',
+    name: 'Terracotta Studio',
+    nameFr: 'Studio Terracotta',
+    type: BackgroundType.studio,
+    category: 'studio',
+    imageUrl: 'https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?w=1200',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?w=400',
+    lighting: 'studio_warm',
+    mood: 'warm',
+    colors: ['terracotta', 'earth', 'brown'],
+    promptHints: 'warm terracotta background, African earth tones, natural clay aesthetic',
+    negativeHints: 'cold, blue, clinical',
+    isPremium: false,
+    sortOrder: 12,
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // LIFESTYLE SCENES
+  // ═══════════════════════════════════════════════════════════════
+  {
+    slug: 'wooden-table-natural',
+    name: 'Natural Wood Table',
+    nameFr: 'Table en Bois Naturel',
+    type: BackgroundType.lifestyle,
+    category: 'interior',
+    imageUrl: 'https://images.unsplash.com/photo-1506439773649-6e0eb8cfb237?w=1200',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1506439773649-6e0eb8cfb237?w=400',
+    lighting: 'natural_window',
+    mood: 'warm',
+    colors: ['brown', 'beige', 'white'],
+    promptHints: 'rustic wooden table, natural window light, cozy interior, lifestyle photography',
+    negativeHints: 'cluttered, dark, messy',
+    isPremium: false,
+    sortOrder: 20,
+  },
+  {
+    slug: 'marble-surface',
+    name: 'Marble Surface',
+    nameFr: 'Surface en Marbre',
+    type: BackgroundType.lifestyle,
+    category: 'interior',
+    imageUrl: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=1200',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=400',
+    lighting: 'studio_soft',
+    mood: 'luxe',
+    colors: ['white', 'grey', 'gold'],
+    promptHints: 'elegant marble surface, luxury aesthetic, high-end product photography',
+    negativeHints: 'cheap, plastic, dull',
+    isPremium: false,
+    sortOrder: 21,
+  },
+  {
+    slug: 'woven-basket-texture',
+    name: 'African Woven Texture',
+    nameFr: 'Texture Tissée Africaine',
+    type: BackgroundType.lifestyle,
+    category: 'interior',
+    imageUrl: 'https://images.unsplash.com/photo-1531685250784-7569952593d2?w=1200',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1531685250784-7569952593d2?w=400',
+    lighting: 'natural_daylight',
+    mood: 'warm',
+    colors: ['beige', 'brown', 'natural'],
+    promptHints: 'traditional African woven basket texture, artisanal craft, natural materials',
+    negativeHints: 'synthetic, plastic, modern',
+    isPremium: false,
+    sortOrder: 22,
+  },
+  {
+    slug: 'fabric-ankara',
+    name: 'Ankara Fabric',
+    nameFr: 'Tissu Wax Ankara',
+    type: BackgroundType.lifestyle,
+    category: 'textile',
+    imageUrl: 'https://images.unsplash.com/photo-1590735213920-68192a487bc2?w=1200',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1590735213920-68192a487bc2?w=400',
+    lighting: 'natural_daylight',
+    mood: 'vibrant',
+    colors: ['colorful', 'orange', 'blue', 'yellow'],
+    promptHints: 'vibrant African wax print fabric, traditional Ankara pattern, bold colors',
+    negativeHints: 'faded, dull, western patterns',
+    isPremium: false,
+    sortOrder: 23,
+  },
+];
+
+async function seedBackgrounds() {
+  console.log('🎨 Seeding backgrounds...');
+
+  for (const bg of backgrounds) {
+    await prisma.background.upsert({
+      where: { slug: bg.slug },
+      update: bg,
+      create: bg,
+    });
+    console.log(`  ✓ ${bg.nameFr}`);
+  }
+
+  console.log(`\n✅ Seeded ${backgrounds.length} backgrounds`);
+}
+
+seedBackgrounds()
+  .catch(console.error)
+  .finally(() => prisma.$disconnect());
