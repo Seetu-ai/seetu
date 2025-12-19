@@ -106,9 +106,9 @@ export function StepProducts() {
       return;
     }
 
-    // Build analysis from saved metadata
-    const hasMetadata = product.metadata && Object.keys(product.metadata).length > 0;
-    const savedAnalysis = hasMetadata ? {
+    // Check if we have actual analysis data (not just bbox metadata)
+    const hasAnalysis = product.metadata?.category || product.metadata?.colors?.length;
+    let savedAnalysis = hasAnalysis ? {
       category: product.metadata?.category || product.category || '',
       subcategory: product.metadata?.subcategory || '',
       name: product.name || '',
@@ -119,6 +119,44 @@ export function StepProducts() {
       suggestedContexts: product.metadata?.suggestedContexts || [],
       keywords: product.metadata?.keywords || [],
     } : undefined;
+
+    // If no analysis, run it now (needed for caption generation)
+    if (!savedAnalysis) {
+      setIsAnalyzing(true);
+      toast.info('Analyse du produit en cours...');
+      try {
+        const analyzeRes = await fetch('/api/v1/studio/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageUrl: product.imageUrl }),
+        });
+        if (analyzeRes.ok) {
+          const analysisData = await analyzeRes.json();
+          savedAnalysis = {
+            category: analysisData.category || '',
+            subcategory: analysisData.subcategory || '',
+            name: analysisData.name || product.name || '',
+            colors: analysisData.colors || [],
+            materials: analysisData.materials || [],
+            style: analysisData.style || '',
+            description: analysisData.description || '',
+            suggestedContexts: analysisData.suggestedContexts || [],
+            keywords: analysisData.keywords || [],
+          };
+          // Save analysis to database for future use
+          fetch(`/api/v1/products/${product.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              metadata: { ...product.metadata, ...savedAnalysis }
+            }),
+          }).catch(() => {}); // Fire and forget
+        }
+      } catch (err) {
+        console.warn('Failed to analyze product:', err);
+      }
+      setIsAnalyzing(false);
+    }
 
     addProduct({
       id: product.id,
