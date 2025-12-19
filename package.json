@@ -4,9 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build && node scripts/postbuild.js",
-    "build:docker": "next build",
-    "start": "HOSTNAME=0.0.0.0 node .next/standalone/server.js",
+    "build": "prisma generate && next build",
+    "start": "next start -H 0.0.0.0 -p ${PORT:-3000}",
     "lint": "eslint",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
