@@ -220,7 +220,7 @@ export function StepBrand() {
 
       {/* Add brand link */}
       <button
-        onClick={() => window.open(`/${slug}/settings/branding`, '_blank')}
+        onClick={() => window.open('/settings/branding', '_blank')}
         className="w-full text-xs text-violet-600 hover:text-violet-700 flex items-center justify-center gap-1 py-2"
       >
         <Plus className="h-3 w-3" />
