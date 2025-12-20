@@ -116,7 +116,7 @@ export function CanvasPreview() {
     if (!latestGeneratedImage?.url) return;
     const link = document.createElement('a');
     link.href = latestGeneratedImage.url;
-    link.download = `cabine-${Date.now()}.png`;
+    link.download = `seetu-${Date.now()}.png`;
     link.click();
   };
 

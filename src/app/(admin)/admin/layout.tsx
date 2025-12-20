@@ -43,7 +43,7 @@ export default async function AdminLayout({
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Shield className="h-6 w-6" />
-            <span className="font-bold text-lg">CABINE Admin</span>
+            <span className="font-bold text-lg">SEETU Admin</span>
             <span className="text-xs bg-red-700 px-2 py-1 rounded">SUPERADMIN</span>
           </div>
           <Button variant="ghost" size="sm" asChild className="text-white hover:bg-red-700">

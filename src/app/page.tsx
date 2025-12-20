@@ -50,7 +50,7 @@ export default async function HomePage() {
               <span className="text-white font-bold text-xl">C</span>
             </div>
             <span className="text-xl font-bold text-slate-900 dark:text-white">
-              Cabine
+              Seetu
             </span>
           </div>
           <div className="flex items-center gap-4">
@@ -141,7 +141,7 @@ export default async function HomePage() {
       {/* Footer */}
       <footer className="container mx-auto px-4 py-8 mt-20 border-t border-slate-200 dark:border-slate-800">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-slate-500">
-          <p>&copy; 2024 Cabine.ai - Tous droits réservés</p>
+          <p>&copy; 2024 Seetu.ai - Tous droits réservés</p>
           <div className="flex gap-6">
             <Link href="/terms" className="hover:text-slate-900 dark:hover:text-white">
               Conditions

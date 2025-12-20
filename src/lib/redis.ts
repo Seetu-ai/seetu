@@ -41,9 +41,9 @@ if (isRedisConfigured()) {
 
 // Queue names
 export const QUEUES = {
-  GENERATION: 'cabine:generation',
-  EXPORT: 'cabine:export',
-  BACKGROUND_REMOVAL: 'cabine:background-removal',
+  GENERATION: 'seetu:generation',
+  EXPORT: 'seetu:export',
+  BACKGROUND_REMOVAL: 'seetu:background-removal',
 } as const;
 
 // Mock queue for development (in-memory)

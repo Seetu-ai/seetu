@@ -13,7 +13,7 @@ export default function AuthLayout({
               <span className="text-white font-bold text-xl">C</span>
             </div>
             <span className="text-2xl font-bold text-slate-900 dark:text-white">
-              Cabine
+              Seetu
             </span>
           </div>
         </div>

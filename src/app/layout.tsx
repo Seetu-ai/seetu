@@ -10,26 +10,26 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Cabine - Studio Photo IA',
-    template: '%s | Cabine',
+    default: 'Seetu - Studio Photo IA',
+    template: '%s | Seetu',
   },
   description: 'Studio Photo IA pour les entreprises africaines. Créez des photos produits professionnelles en quelques clics.',
   keywords: ['photo produit', 'IA', 'e-commerce', 'Sénégal', 'Afrique', 'studio photo'],
-  authors: [{ name: 'Cabine.ai' }],
-  creator: 'Cabine.ai',
+  authors: [{ name: 'Seetu.ai' }],
+  creator: 'Seetu.ai',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Cabine',
+    title: 'Seetu',
   },
   formatDetection: {
     telephone: false,
   },
   openGraph: {
     type: 'website',
-    siteName: 'Cabine',
-    title: 'Cabine - Studio Photo IA',
+    siteName: 'Seetu',
+    title: 'Seetu - Studio Photo IA',
     description: 'Studio Photo IA pour les entreprises africaines',
   },
 };

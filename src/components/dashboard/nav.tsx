@@ -151,7 +151,7 @@ export function DashboardNav({ user, mobile }: NavProps) {
       <div className="mt-auto pt-4 border-t dark:border-slate-800">
         <div className="px-3 py-2">
           <p className="text-xs text-slate-400">
-            Cabine v1.0
+            Seetu v1.0
           </p>
         </div>
       </div>

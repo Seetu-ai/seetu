@@ -98,7 +98,7 @@ export function DashboardHeader({ user, brand, brands }: HeaderProps) {
               <span className="text-white font-bold text-sm">C</span>
             </div>
             <span className="font-semibold text-slate-900 dark:text-white hidden sm:inline">
-              CABINE
+              SEETU
             </span>
           </Link>
 

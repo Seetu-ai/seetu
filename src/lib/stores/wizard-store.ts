@@ -401,7 +401,7 @@ export const useWizardStore = create<WizardState>()(
         },
       }),
       {
-        name: 'cabine-wizard-storage',
+        name: 'seetu-wizard-storage',
         partialize: (state) => ({
           // Persist wizard state and generated images
           products: state.products,

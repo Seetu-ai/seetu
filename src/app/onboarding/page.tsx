@@ -320,7 +320,7 @@ export default function OnboardingPage() {
               <span className="text-white font-bold text-xl">C</span>
             </div>
             <span className="text-2xl font-bold text-slate-900 dark:text-white">
-              Cabine
+              Seetu
             </span>
           </div>
         </div>
@@ -350,7 +350,7 @@ export default function OnboardingPage() {
                     <Sparkles className="w-8 h-8 text-violet-600" />
                   </div>
                 </div>
-                <CardTitle className="text-2xl text-center">Bienvenue sur Cabine!</CardTitle>
+                <CardTitle className="text-2xl text-center">Bienvenue sur Seetu!</CardTitle>
                 <CardDescription className="text-center">
                   Créez votre première marque pour commencer
                 </CardDescription>

@@ -24,7 +24,7 @@ export default async function AdminDashboard() {
           Admin Dashboard
         </h1>
         <p className="text-slate-600 dark:text-slate-400 mt-1">
-          Vue d'ensemble de la plateforme CABINE.AI
+          Vue d'ensemble de la plateforme SEETU.AI
         </p>
       </div>
 
