@@ -130,7 +130,7 @@ export function LandingPage() {
         .landing-header { position: fixed; top: 0; width: 100%; z-index: 100; padding: 1rem 0; background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border-light); }
         .nav-flex { display: flex; justify-content: space-between; align-items: center; }
         .logo { font-family: var(--font-display); font-weight: 800; font-size: 1.4rem; color: var(--text-main); display: flex; align-items: center; gap: 8px; text-decoration: none; }
-        .logo span { color: var(--accent); font-size: 1.6rem; line-height: 0; padding-bottom: 5px; }
+        .logo img { height: 28px; width: auto; margin-right: 4px; }
 
         .hero-section { min-height: 100vh; display: flex; align-items: center; padding-top: 6rem; position: relative; overflow: hidden; }
         .hero-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 4rem; align-items: center; width: 100%; }
@@ -227,7 +227,7 @@ export function LandingPage() {
 
         <header className="landing-header">
           <div className="container nav-flex">
-            <Link href="/" className="logo interactable"><span>&#10022;</span> SEETU AI.</Link>
+            <Link href="/" className="logo interactable"><img src="/logo.png" alt="Seetu" style={{ height: '28px', width: 'auto' }} /> SEETU AI.</Link>
             <Link href="/login" className="login-btn interactable">Connexion</Link>
           </div>
         </header>
