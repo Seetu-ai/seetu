@@ -144,11 +144,16 @@ export async function POST(req: NextRequest) {
 
 // Instagram scraper
 async function scrapeInstagram(handle: string, token: string) {
-  const actorUrl = `${APIFY_BASE_URL}/${APIFY_ACTORS.instagram}/run-sync-get-dataset-items?token=${token}`;
+  const actorUrl = `${APIFY_BASE_URL}/${APIFY_ACTORS.instagram}/run-sync-get-dataset-items`;
+
+  console.log(`[SOCIAL] Calling Apify for Instagram @${handle}`);
 
   const response = await fetch(actorUrl, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token.trim()}`,
+    },
     body: JSON.stringify({
       usernames: [handle],
       resultsLimit: 12,
@@ -158,7 +163,9 @@ async function scrapeInstagram(handle: string, token: string) {
   });
 
   if (!response.ok) {
-    throw new Error('Instagram scrape failed');
+    const errText = await response.text();
+    console.error(`[SOCIAL] Apify error ${response.status}:`, errText.slice(0, 200));
+    throw new Error(`Instagram scrape failed: ${response.status}`);
   }
 
   const data = await response.json();
@@ -210,11 +217,14 @@ async function scrapeInstagram(handle: string, token: string) {
 
 // TikTok scraper
 async function scrapeTikTok(handle: string, token: string) {
-  const actorUrl = `${APIFY_BASE_URL}/${APIFY_ACTORS.tiktok}/run-sync-get-dataset-items?token=${token}`;
+  const actorUrl = `${APIFY_BASE_URL}/${APIFY_ACTORS.tiktok}/run-sync-get-dataset-items`;
 
   const response = await fetch(actorUrl, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token.trim()}`,
+    },
     body: JSON.stringify({
       profiles: [handle],
       resultsPerPage: 12,
@@ -224,7 +234,9 @@ async function scrapeTikTok(handle: string, token: string) {
   });
 
   if (!response.ok) {
-    throw new Error('TikTok scrape failed');
+    const errText = await response.text();
+    console.error(`[SOCIAL] TikTok error ${response.status}:`, errText.slice(0, 200));
+    throw new Error(`TikTok scrape failed: ${response.status}`);
   }
 
   const data = await response.json();
@@ -279,11 +291,14 @@ async function scrapeTikTok(handle: string, token: string) {
 
 // Facebook scraper
 async function scrapeFacebook(handle: string, token: string) {
-  const actorUrl = `${APIFY_BASE_URL}/${APIFY_ACTORS.facebook}/run-sync-get-dataset-items?token=${token}`;
+  const actorUrl = `${APIFY_BASE_URL}/${APIFY_ACTORS.facebook}/run-sync-get-dataset-items`;
 
   const response = await fetch(actorUrl, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token.trim()}`,
+    },
     body: JSON.stringify({
       startUrls: [{ url: `https://www.facebook.com/${handle}` }],
       resultsLimit: 12,
@@ -291,7 +306,9 @@ async function scrapeFacebook(handle: string, token: string) {
   });
 
   if (!response.ok) {
-    throw new Error('Facebook scrape failed');
+    const errText = await response.text();
+    console.error(`[SOCIAL] Facebook error ${response.status}:`, errText.slice(0, 200));
+    throw new Error(`Facebook scrape failed: ${response.status}`);
   }
 
   const data = await response.json();

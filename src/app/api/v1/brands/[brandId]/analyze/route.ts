@@ -61,24 +61,36 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
     // Step 1: Fetch images from Instagram via Apify
     console.log(`[BRAND_ANALYZE] Fetching Instagram data for @${cleanHandle}`);
-    const actorUrl = `${APIFY_BASE_URL}/${APIFY_INSTAGRAM_ACTOR}/run-sync-get-dataset-items?token=${apifyToken}`;
+    const actorUrl = `${APIFY_BASE_URL}/${APIFY_INSTAGRAM_ACTOR}/run-sync-get-dataset-items`;
 
-    const apifyRes = await fetch(actorUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        usernames: [cleanHandle],
-        resultsLimit: 12,
-        resultsType: 'posts',
-        addParentData: true,
-      }),
-    });
+    let apifyRes;
+    try {
+      apifyRes = await fetch(actorUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apifyToken}`,
+        },
+        body: JSON.stringify({
+          usernames: [cleanHandle],
+          resultsLimit: 12,
+          resultsType: 'posts',
+          addParentData: true,
+        }),
+      });
+    } catch (fetchError) {
+      console.error('Apify fetch error:', fetchError);
+      return NextResponse.json(
+        { error: `Erreur de connexion à Apify: ${fetchError instanceof Error ? fetchError.message : 'Unknown'}` },
+        { status: 500 }
+      );
+    }
 
     if (!apifyRes.ok) {
       const errorText = await apifyRes.text();
-      console.error('Apify error:', errorText);
+      console.error('Apify error:', apifyRes.status, errorText);
       return NextResponse.json(
-        { error: 'Erreur lors de la récupération Instagram' },
+        { error: `Erreur Apify (${apifyRes.status}): ${errorText.slice(0, 100)}` },
         { status: 500 }
       );
     }
