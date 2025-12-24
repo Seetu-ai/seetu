@@ -4,8 +4,10 @@ import { useState } from 'react';
 import { useWizardStore, PresentationType } from '@/lib/stores/wizard-store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { Box, User, Shirt, Pen, ArrowRight, Sparkles } from 'lucide-react';
+import { Box, User, Shirt, Pen, ArrowRight, Sparkles, Users, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { ModelBrowser } from '../model-browser';
 
 const PRESENTATION_OPTIONS: {
   type: PresentationType;
@@ -38,12 +40,14 @@ const PRESENTATION_OPTIONS: {
 ];
 
 export function StepPresentation() {
-  const { presentation, setPresentation, setPresentationNote, nextStep, prevStep, products, activeProductIndex } =
+  const { presentation, setPresentation, setPresentationNote, setModelAsset, nextStep, prevStep, products, activeProductIndex } =
     useWizardStore();
   const [showNote, setShowNote] = useState(!!presentation.note);
+  const [showModelBrowser, setShowModelBrowser] = useState(false);
 
   const activeProduct = products[activeProductIndex];
   const selectedOption = PRESENTATION_OPTIONS.find(o => o.type === presentation.type);
+  const selectedModel = presentation.modelAsset;
 
   return (
     <div className="space-y-4">
@@ -117,11 +121,105 @@ export function StepPresentation() {
         })}
       </div>
 
+      {/* Model Selection (only for on_model) */}
+      {presentation.type === 'on_model' && (
+        <div className="space-y-3">
+          {/* Model selection header */}
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+            <div className="flex items-start gap-3">
+              <Users className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm text-amber-800 font-medium">
+                  Choisissez un mannequin (optionnel)
+                </p>
+                <p className="text-xs text-amber-600 mt-0.5">
+                  Utilisez un modèle de notre marketplace pour un rendu plus réaliste
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Selected model preview OR select button */}
+          {selectedModel ? (
+            <div className="bg-violet-50 border border-violet-200 rounded-xl p-3">
+              <div className="flex items-center gap-3">
+                {selectedModel.thumbnailUrl ? (
+                  <img
+                    src={selectedModel.thumbnailUrl}
+                    alt={selectedModel.title}
+                    className="w-14 h-14 rounded-lg object-cover"
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-lg bg-violet-100 flex items-center justify-center">
+                    <User className="h-6 w-6 text-violet-500" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-violet-900 text-sm truncate">
+                    {selectedModel.title}
+                  </p>
+                  <p className="text-xs text-violet-600">
+                    par {selectedModel.creatorName}
+                  </p>
+                  <Badge variant="secondary" className="mt-1 text-xs bg-violet-100 text-violet-700">
+                    +{selectedModel.priceUnits / 100} crédit
+                  </Badge>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowModelBrowser(!showModelBrowser)}
+                    className="text-violet-600 hover:text-violet-800 hover:bg-violet-100"
+                  >
+                    Changer
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setModelAsset(undefined)}
+                    className="text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              onClick={() => setShowModelBrowser(!showModelBrowser)}
+              className="w-full justify-between border-dashed border-slate-300 text-slate-600 hover:border-violet-300 hover:text-violet-600"
+            >
+              <span className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Parcourir les mannequins
+              </span>
+              {showModelBrowser ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </Button>
+          )}
+
+          {/* Model browser */}
+          {showModelBrowser && (
+            <div className="border border-slate-200 rounded-xl p-4 bg-white">
+              <ModelBrowser onClose={() => setShowModelBrowser(false)} />
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Selection summary + note */}
       {selectedOption && (
         <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2">
           <p className="text-sm text-slate-700">
             <span className="font-medium">Votre choix :</span> {selectedOption.labelFr}
+            {selectedModel && (
+              <span className="text-violet-600"> avec {selectedModel.title}</span>
+            )}
           </p>
 
           {/* Note toggle */}

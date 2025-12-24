@@ -15,6 +15,9 @@ import {
   Sparkles,
   Upload,
   Check,
+  Coins,
+  User,
+  MapPin,
 } from 'lucide-react';
 
 export function StepMoodboard() {
@@ -117,6 +120,15 @@ export function StepMoodboard() {
   const canGenerate = products.length > 0 && selectedBrandId;
   const activeProduct = products[0];
 
+  // Cost calculation
+  const BASE_GENERATION_COST = 100; // 1 credit = 100 units
+  const modelAsset = presentation.modelAsset;
+  const locationAsset = scene.locationAsset;
+  const modelFee = modelAsset?.priceUnits || 0;
+  const locationFee = locationAsset?.priceUnits || 0;
+  const totalCostUnits = BASE_GENERATION_COST + modelFee + locationFee;
+  const totalCostCredits = totalCostUnits / 100;
+
   // Build summary of choices
   const getSummary = () => {
     const parts: string[] = [];
@@ -131,6 +143,11 @@ export function StepMoodboard() {
       ghost: 'en flat lay',
     };
     parts.push(presentationLabels[presentation.type] || '');
+
+    // Add model name if selected
+    if (presentation.type === 'on_model' && modelAsset) {
+      parts.push(`(${modelAsset.title})`);
+    }
 
     if (scene.backgroundName) {
       parts.push(`à ${scene.backgroundName.split(',')[0]}`);
@@ -265,6 +282,55 @@ export function StepMoodboard() {
         >
           Retour
         </Button>
+      </div>
+
+      {/* Cost Breakdown */}
+      <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+        <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-2">
+          <Coins className="h-3.5 w-3.5" />
+          Coût de la génération
+        </div>
+        <div className="space-y-1.5">
+          {/* Base generation cost */}
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-slate-600">Génération d'image</span>
+            <span className="font-medium text-slate-900">1 crédit</span>
+          </div>
+
+          {/* Model fee if selected */}
+          {modelAsset && (
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-slate-600 flex items-center gap-1.5">
+                <User className="h-3.5 w-3.5 text-violet-500" />
+                Mannequin: {modelAsset.title}
+              </span>
+              <span className="font-medium text-violet-600">
+                +{modelFee / 100} crédit
+              </span>
+            </div>
+          )}
+
+          {/* Location fee if selected */}
+          {locationAsset && (
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-slate-600 flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5 text-amber-500" />
+                Lieu: {locationAsset.title}
+              </span>
+              <span className="font-medium text-amber-600">
+                +{locationFee / 100} crédit
+              </span>
+            </div>
+          )}
+
+          {/* Total */}
+          <div className="flex justify-between items-center text-sm pt-2 border-t border-slate-200 mt-2">
+            <span className="font-semibold text-slate-900">Total</span>
+            <span className="font-bold text-lg text-violet-600">
+              {totalCostCredits} crédit{totalCostCredits !== 1 ? 's' : ''}
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Generate Button - Prominent */}

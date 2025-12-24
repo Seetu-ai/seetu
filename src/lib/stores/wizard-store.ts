@@ -29,9 +29,30 @@ export interface SelectedProduct {
   note?: string; // User's modification note: "Make it blue"
 }
 
+export interface SelectedModelAsset {
+  id: string;
+  title: string;
+  thumbnailUrl: string | null;
+  priceUnits: number;
+  modelGender: string | null;
+  modelAgeRange: string | null;
+  creatorName: string;
+}
+
+export interface SelectedLocationAsset {
+  id: string;
+  title: string;
+  thumbnailUrl: string | null;
+  priceUnits: number;
+  locationCity: string | null;
+  locationType: string | null;
+  creatorName: string;
+}
+
 export interface PresentationState {
   type: PresentationType;
   note?: string; // "Model smiling, casual pose"
+  modelAsset?: SelectedModelAsset; // Selected marketplace model
 }
 
 export interface SceneState {
@@ -40,6 +61,7 @@ export interface SceneState {
   backgroundUrl?: string;
   backgroundName?: string;
   note?: string; // "Night time, rainy"
+  locationAsset?: SelectedLocationAsset; // Selected marketplace location
 }
 
 export interface MoodboardState {
@@ -112,10 +134,12 @@ export interface WizardState {
   // Presentation actions
   setPresentation: (type: PresentationType) => void;
   setPresentationNote: (note: string) => void;
+  setModelAsset: (asset: SelectedModelAsset | undefined) => void;
 
   // Scene actions
   setSceneType: (type: SceneType) => void;
-  setBackground: (id: string, url: string, name: string) => void;
+  setBackground: (id: string, url: string, name: string, locationAsset?: SelectedLocationAsset) => void;
+  setLocationAsset: (asset: SelectedLocationAsset | undefined) => void;
   setSceneNote: (note: string) => void;
 
   // Moodboard actions
@@ -161,6 +185,8 @@ export interface WizardBrief {
   iterationFeedback?: string; // Feedback from previous generation
   previousImageUrl?: string; // URL of the image to improve
   selectedBrandId?: string; // Selected brand for style/caption generation
+  modelAssetId?: string; // Selected marketplace model asset ID
+  locationAssetId?: string; // Selected marketplace location asset ID
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -262,7 +288,12 @@ export const useWizardStore = create<WizardState>()(
         // Presentation actions
         setPresentation: (type) =>
           set((state) => ({
-            presentation: { ...state.presentation, type },
+            presentation: {
+              ...state.presentation,
+              type,
+              // Clear model asset if not on_model
+              modelAsset: type === 'on_model' ? state.presentation.modelAsset : undefined,
+            },
           })),
 
         setPresentationNote: (note) =>
@@ -270,20 +301,36 @@ export const useWizardStore = create<WizardState>()(
             presentation: { ...state.presentation, note },
           })),
 
+        setModelAsset: (asset) =>
+          set((state) => ({
+            presentation: { ...state.presentation, modelAsset: asset },
+          })),
+
         // Scene actions
         setSceneType: (type) =>
           set((state) => ({
-            scene: { ...state.scene, type },
+            scene: {
+              ...state.scene,
+              type,
+              // Clear location asset if switching scene type
+              locationAsset: undefined,
+            },
           })),
 
-        setBackground: (id, url, name) =>
+        setBackground: (id, url, name, locationAsset) =>
           set((state) => ({
             scene: {
               ...state.scene,
               backgroundId: id,
               backgroundUrl: url,
               backgroundName: name,
+              locationAsset: locationAsset,
             },
+          })),
+
+        setLocationAsset: (asset) =>
+          set((state) => ({
+            scene: { ...state.scene, locationAsset: asset },
           })),
 
         setSceneNote: (note) =>
@@ -397,6 +444,8 @@ export const useWizardStore = create<WizardState>()(
             iterationFeedback: state.iterationFeedback || undefined,
             previousImageUrl: latestImage?.url || undefined,
             selectedBrandId: state.selectedBrandId || undefined,
+            modelAssetId: state.presentation.modelAsset?.id || undefined,
+            locationAssetId: state.scene.locationAsset?.id || undefined,
           };
         },
       }),

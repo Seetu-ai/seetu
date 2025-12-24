@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import useSWR from 'swr';
-import { useWizardStore, SceneType } from '@/lib/stores/wizard-store';
+import { useWizardStore, SceneType, SelectedLocationAsset } from '@/lib/stores/wizard-store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -39,6 +39,16 @@ interface Background {
   category: string;
   thumbnailUrl: string;
   location?: string;
+  // Marketplace location fields
+  isMarketplace?: boolean;
+  assetId?: string;
+  creator?: {
+    id: string;
+    displayName: string;
+    avatarUrl: string | null;
+    isVerified: boolean;
+  };
+  priceUnits?: number;
 }
 
 interface LocationResult {
@@ -488,13 +498,39 @@ export function StepScene() {
                         </div>
                         <div
                           className="flex-1 min-w-0"
-                          onClick={() => setBackground(bg.id, bg.thumbnailUrl, bg.nameFr)}
+                          onClick={() => {
+                            // Build location asset if marketplace location
+                            const locationAsset: SelectedLocationAsset | undefined = bg.isMarketplace && bg.assetId
+                              ? {
+                                  id: bg.assetId,
+                                  title: bg.nameFr,
+                                  thumbnailUrl: bg.thumbnailUrl,
+                                  priceUnits: bg.priceUnits || 0,
+                                  locationCity: bg.location || null,
+                                  locationType: bg.category || null,
+                                  creatorName: bg.creator?.displayName || 'Créateur',
+                                }
+                              : undefined;
+                            setBackground(bg.id, bg.thumbnailUrl, bg.nameFr, locationAsset);
+                          }}
                         >
                           <div className="text-sm font-medium text-slate-800 truncate">
                             {bg.nameFr}
                           </div>
-                          {bg.location && (
-                            <div className="text-xs text-slate-500">{bg.location}</div>
+                          <div className="flex items-center gap-2">
+                            {bg.location && (
+                              <span className="text-xs text-slate-500">{bg.location}</span>
+                            )}
+                            {bg.isMarketplace && bg.priceUnits && (
+                              <span className="text-xs font-medium text-amber-600">
+                                +{bg.priceUnits / 100} crédit{bg.priceUnits > 100 ? 's' : ''}
+                              </span>
+                            )}
+                          </div>
+                          {bg.isMarketplace && bg.creator && (
+                            <div className="text-xs text-violet-600">
+                              par {bg.creator.displayName}
+                            </div>
                           )}
                         </div>
                         {isSelected && <Check className="h-4 w-4 text-violet-600 flex-shrink-0" />}

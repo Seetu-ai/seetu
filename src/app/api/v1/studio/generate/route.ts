@@ -6,7 +6,8 @@ import { constructPrompt, buildNegativePrompt, selectPipeline } from '@/lib/prom
 import { getCleanReferenceUrl } from '@/lib/image-processing';
 import { debitCredits } from '@/lib/credits';
 import { checkRateLimit, getRateLimitKey, RATE_LIMITS, rateLimitResponse } from '@/lib/rate-limit';
-import { uploadGeneratedImage } from '@/lib/storage';
+import { uploadGeneratedImage, getAssetImageSignedUrls } from '@/lib/storage';
+import { recordAssetUsage } from '@/lib/creators';
 import type { WizardBrief } from '@/lib/stores/wizard-store';
 import type { BrandDNA, VerbalDNA, ProductAnalysis } from '@/types';
 
@@ -14,7 +15,7 @@ const GEMINI_API_KEY = process.env.GOOGLE_AI_API_KEY;
 const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 
 // Credit costs in units (100 units = 1 credit displayed)
-const CREDIT_COST = 100; // 1 credit per generation
+const BASE_CREDIT_COST = 100; // 1 credit per generation
 
 /**
  * POST /api/v1/studio/generate
@@ -44,10 +45,107 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Product image is required' }, { status: 400 });
     }
 
+    // Handle marketplace model asset
+    let modelAsset: {
+      id: string;
+      priceUnits: number;
+      imageUrls: string[];
+      title: string;
+      modelGender: string | null;
+      modelAgeRange: string | null;
+    } | null = null;
+    let modelImageUrls: string[] = [];
+
+    if (brief.modelAssetId && brief.presentation.type === 'on_model') {
+      // Fetch and validate model asset
+      const asset = await prisma.creatorAsset.findFirst({
+        where: {
+          id: brief.modelAssetId,
+          status: 'APPROVED',
+          type: 'MODEL_PROFILE',
+          deletedAt: null,
+        },
+        select: {
+          id: true,
+          priceUnits: true,
+          imageUrls: true,
+          title: true,
+          modelGender: true,
+          modelAgeRange: true,
+        },
+      });
+
+      if (!asset) {
+        return NextResponse.json(
+          { error: 'Model asset not found or not approved' },
+          { status: 400 }
+        );
+      }
+
+      modelAsset = asset;
+
+      // Get signed URLs for model images
+      if (asset.imageUrls && asset.imageUrls.length > 0) {
+        try {
+          modelImageUrls = await getAssetImageSignedUrls(asset.imageUrls, 3600);
+          console.log(`[STUDIO] Model asset ${asset.id}: ${modelImageUrls.length} images loaded`);
+        } catch (urlError) {
+          console.error('[STUDIO] Failed to get model image URLs:', urlError);
+        }
+      }
+    }
+
+    // Fetch location asset if selected (marketplace location)
+    let locationAsset: {
+      id: string;
+      priceUnits: number;
+      title: string;
+      locationCity: string | null;
+    } | null = null;
+
+    if (brief.locationAssetId) {
+      const asset = await prisma.creatorAsset.findFirst({
+        where: {
+          id: brief.locationAssetId,
+          status: 'APPROVED',
+          type: 'LOCATION',
+          deletedAt: null,
+        },
+        select: {
+          id: true,
+          priceUnits: true,
+          title: true,
+          locationCity: true,
+        },
+      });
+
+      if (asset) {
+        locationAsset = asset;
+        console.log(`[STUDIO] Location asset ${asset.id}: ${asset.title}`);
+      }
+    }
+
+    // Calculate total cost (base + model asset fee + location asset fee)
+    const modelFee = modelAsset?.priceUnits || 0;
+    const locationFee = locationAsset?.priceUnits || 0;
+    const totalAssetFee = modelFee + locationFee;
+    const totalCreditCost = BASE_CREDIT_COST + totalAssetFee;
+
+    console.log(`[STUDIO] Cost breakdown: base=${BASE_CREDIT_COST}, modelFee=${modelFee}, locationFee=${locationFee}, total=${totalCreditCost}`);
+
     // Check credits
-    if (user.creditUnits < CREDIT_COST) {
+    if (user.creditUnits < totalCreditCost) {
       return NextResponse.json(
-        { error: 'Crédits insuffisants', required: CREDIT_COST, available: user.creditUnits },
+        {
+          error: 'Crédits insuffisants',
+          required: totalCreditCost,
+          available: user.creditUnits,
+          breakdown: {
+            base: BASE_CREDIT_COST,
+            modelFee,
+            locationFee,
+          },
+        },
         { status: 402 }
       );
     }
@@ -160,7 +258,9 @@ export async function POST(req: NextRequest) {
       brief.moodboard.url,
       brief.iterationFeedback,
       brief.previousImageUrl,
-      negativePrompt
+      negativePrompt,
+      modelImageUrls,
+      modelAsset
     );
 
     if (!outputUrl) {
@@ -185,10 +285,12 @@ export async function POST(req: NextRequest) {
     // Debit credits atomically (prevents race conditions)
     const debitResult = await debitCredits({
       userId: user.id,
-      units: CREDIT_COST,
-      reason: 'studio_generation',
+      units: totalCreditCost,
+      reason: modelAsset ? 'studio_generation_with_model' : 'studio_generation',
       refType: 'studio_wizard',
-      description: 'Studio wizard generation',
+      description: modelAsset
+        ? `Studio generation with model: ${modelAsset.title}`
+        : 'Studio wizard generation',
     });
 
     if (!debitResult.success) {
@@ -197,6 +299,40 @@ export async function POST(req: NextRequest) {
         { error: 'Crédits insuffisants', details: debitResult.error },
         { status: 402 }
       );
+    }
+
+    // Record asset usage for marketplace model (for creator payouts)
+    let modelUsageId: string | undefined;
+    if (modelAsset) {
+      try {
+        const assetUsage = await recordAssetUsage(
+          modelAsset.id,
+          user.id,
+          undefined // studioSessionId will be set later if needed
+        );
+        modelUsageId = assetUsage.id;
+        console.log(`[STUDIO] Recorded model asset usage: ${modelUsageId}`);
+      } catch (usageError) {
+        console.error('[STUDIO] Failed to record model asset usage:', usageError);
+        // Don't fail the generation - usage can be reconciled later
+      }
+    }
+
+    // Record asset usage for marketplace location (for creator payouts)
+    let locationUsageId: string | undefined;
+    if (locationAsset) {
+      try {
+        const assetUsage = await recordAssetUsage(
+          locationAsset.id,
+          user.id,
+          undefined // studioSessionId will be set later if needed
+        );
+        locationUsageId = assetUsage.id;
+        console.log(`[STUDIO] Recorded location asset usage: ${locationUsageId}`);
+      } catch (usageError) {
+        console.error('[STUDIO] Failed to record location asset usage:', usageError);
+        // Don't fail the generation - usage can be reconciled later
+      }
     }
 
     // Create studio session
@@ -239,7 +375,7 @@ export async function POST(req: NextRequest) {
           finalPrompt: prompt,
           generatedUrls: [outputUrl],
           status: 'completed',
-          creditsCost: CREDIT_COST,
+          creditsCost: totalCreditCost,
           currentStep: 4,
           completedSteps: [1, 2, 3, 4],
         },
@@ -254,8 +390,18 @@ export async function POST(req: NextRequest) {
       caption: generatedCaption,
       prompt,
       pipeline,
-      creditsCost: CREDIT_COST,
+      creditsCost: totalCreditCost,
       creditsRemaining: debitResult.newBalance,
+      costBreakdown: {
+        base: BASE_CREDIT_COST,
+        modelFee,
+        locationFee,
+        totalAssetFee,
+        modelAssetId: modelAsset?.id,
+        modelAssetTitle: modelAsset?.title,
+        locationAssetId: locationAsset?.id,
+        locationAssetTitle: locationAsset?.title,
+      },
     });
   } catch (error) {
     console.error('Studio generation error:', error);
@@ -277,7 +423,13 @@ async function generateWithGemini(
   moodboardUrl?: string,
   iterationFeedback?: string,
   previousImageUrl?: string,
-  negativePrompt?: string
+  negativePrompt?: string,
+  modelImageUrls?: string[],
+  modelAsset?: {
+    title: string;
+    modelGender: string | null;
+    modelAgeRange: string | null;
+  } | null
 ): Promise<string | null> {
   if (!genAI) {
     console.error('Gemini API not configured');
@@ -331,6 +483,22 @@ async function generateWithGemini(
       }
     }
 
+    // Add model reference images if using marketplace model
+    if (modelImageUrls && modelImageUrls.length > 0) {
+      for (const modelUrl of modelImageUrls.slice(0, 3)) { // Limit to 3 images
+        const modelImage = await urlToBase64(modelUrl);
+        if (modelImage) {
+          parts.push({
+            inlineData: {
+              mimeType: modelImage.mimeType,
+              data: modelImage.data,
+            },
+          });
+        }
+      }
+      console.log(`[STUDIO] Added ${Math.min(modelImageUrls.length, 3)} model reference images`);
+    }
+
     // Add previous image if this is an iteration
     if (iterationFeedback && previousImageUrl) {
       const prevImage = await urlToBase64(previousImageUrl);
@@ -368,17 +536,33 @@ CRITICAL INSTRUCTIONS:
 
 Create an improved version that addresses the user's feedback while maintaining product accuracy.`;
     } else {
+      // Build model reference instruction if using marketplace model
+      let modelInstruction = '';
+      if (modelAsset && modelImageUrls && modelImageUrls.length > 0) {
+        const genderDesc = modelAsset.modelGender === 'female' ? 'femme' :
+                          modelAsset.modelGender === 'male' ? 'homme' : 'personne';
+        const ageDesc = modelAsset.modelAgeRange || '';
+        modelInstruction = `
+Model Reference: The model images provided show the EXACT person who should wear/hold/present the product.
+- Use the model's face, body type, skin tone, and features EXACTLY as shown in the reference photos
+- The model is a ${genderDesc}${ageDesc ? ` aged ${ageDesc}` : ''}
+- The product should be worn by or held by this specific model
+- Maintain the model's natural appearance - no modifications to their features`;
+      }
+
       fullPrompt = `Generate a professional product photography image.
 
 Product Image: First image provided - THIS IS THE EXACT PRODUCT TO USE. Keep the product IDENTICAL - same label, same design, same brand, same colors, same text. Do NOT redesign or modify the product appearance in any way.
 ${backgroundUrl ? 'Background Reference: Second image provided - place the product naturally into this scene with matching lighting and shadows.' : ''}
 ${moodboardUrl ? 'Style Reference: Use the style, lighting, and mood from the reference image.' : ''}
+${modelInstruction}
 
 Requirements:
 ${prompt}
 ${negativePrompt ? `\nAVOID (DO NOT INCLUDE THESE): ${negativePrompt}` : ''}
 
 CRITICAL: The product in the output must look EXACTLY like the product in the input image. Same brand, same label design, same colors. Only change the background/environment, not the product itself.
+${modelAsset ? 'CRITICAL: The model in the output must look EXACTLY like the person in the model reference images. Same face, same skin tone, same features.' : ''}
 
 Create a photorealistic, commercial-quality image that looks like it was shot by a professional photographer in Senegal. The product should be the clear focal point with perfect lighting and composition.`;
     }

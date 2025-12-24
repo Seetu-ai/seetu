@@ -64,6 +64,30 @@ enum PaymentMethod {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// CREATOR ECOSYSTEM ENUMS
+// ═══════════════════════════════════════════════════════════════
+
+enum CreatorType {
+  MODEL
+  PHOTOGRAPHER
+  LOCATION_OWNER
+}
+
+enum AssetType {
+  MODEL_PROFILE
+  PHOTO_STYLE
+  LOCATION
+}
+
+enum AssetStatus {
+  DRAFT           // Creator still editing
+  PENDING_REVIEW  // Submitted for review
+  APPROVED        // Live on marketplace
+  REJECTED        // Failed review
+  SUSPENDED       // Temporarily hidden
+}
+
+// ═══════════════════════════════════════════════════════════════
 // USER - The primary entity (owns brands, credits, etc.)
 // ═══════════════════════════════════════════════════════════════
 
@@ -89,6 +113,11 @@ model User {
   transactions    Transaction[]
   exportJobs      ExportJob[]
   studioSessions  StudioSession[]
+
+  // Creator ecosystem relations
+  creatorProfile  CreatorProfile?
+  assetUsages     AssetUsage[]
+  creatorReviews  CreatorReview[]
 
   @@map("users")
 }
@@ -460,4 +489,197 @@ model StudioSession {
 
   @@index([userId, status])
   @@map("studio_sessions")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CREATOR ECOSYSTEM - Marketplace for Models, Photographers, Locations
+// ═══════════════════════════════════════════════════════════════
+
+model CreatorProfile {
+  id              String       @id @default(uuid())
+  userId          String       @unique @map("user_id")
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type            CreatorType
+  displayName     String       @map("display_name")
+  bio             String?
+  avatarUrl       String?      @map("avatar_url")
+
+  // Verification (stored privately, never returned in public API)
+  isVerified      Boolean      @default(false) @map("is_verified")
+  verifiedAt      DateTime?    @map("verified_at")
+
+  // Payout info (private - only used by payout job)
+  payoutMethod    String?      @map("payout_method") // wave, orange_money
+  payoutPhone     String?      @map("payout_phone")
+
+  // Public stats only
+  totalAssets     Int          @default(0) @map("total_assets")
+  totalUsages     Int          @default(0) @map("total_usages")
+  rating          Float?
+  reviewCount     Int          @default(0) @map("review_count")
+
+  // Social (optional)
+  instagramHandle String?      @map("instagram_handle")
+
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  assets          CreatorAsset[]
+  payouts         CreatorPayout[]
+  reviews         CreatorReview[]
+
+  @@index([userId])
+  @@index([type])
+  @@index([isVerified])
+  @@map("creator_profiles")
+}
+
+model CreatorAsset {
+  id              String       @id @default(uuid())
+  creatorId       String       @map("creator_id")
+  creator         CreatorProfile @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  type            AssetType
+  status          AssetStatus  @default(DRAFT)
+
+  // Public content
+  title           String
+  description     String?
+  thumbnailUrl    String?      @map("thumbnail_url") // Public signed URL
+
+  // Private content (signed URLs only for approved usage)
+  imageUrls       String[]     @default([]) @map("image_urls") // Private bucket paths
+
+  // MODEL_PROFILE specific
+  modelGender     String?      @map("model_gender")
+  modelAgeRange   String?      @map("model_age_range") // "18-25", "25-35", "35-45", "45+"
+  modelStyles     String[]     @default([]) @map("model_styles") // ["casual", "professional", "traditional"]
+
+  // Consent (REQUIRED for models - private bucket paths)
+  consentFormPath   String?    @map("consent_form_path")
+  idDocPath         String?    @map("id_doc_path")
+  selfieVerifyPath  String?    @map("selfie_verify_path")
+  consentVerified   Boolean    @default(false) @map("consent_verified")
+
+  // PHOTO_STYLE specific
+  stylePreset     Json?        @map("style_preset")
+
+  // LOCATION specific
+  locationName    String?      @map("location_name")
+  locationCity    String?      @map("location_city")
+  locationType    String?      @map("location_type")
+
+  // Pricing (FIXED by platform - in credit units)
+  priceUnits      Int          @default(50) @map("price_units") // 0.5 credits = 50 units
+
+  // Categorization
+  tags            String[]     @default([])
+
+  // Stats
+  usageCount      Int          @default(0) @map("usage_count")
+  viewCount       Int          @default(0) @map("view_count")
+
+  // Review audit
+  reviewedAt      DateTime?    @map("reviewed_at")
+  reviewedBy      String?      @map("reviewed_by") // Admin user ID
+  rejectionReason String?      @map("rejection_reason")
+
+  // Soft delete
+  deletedAt       DateTime?    @map("deleted_at")
+
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  usages          AssetUsage[]
+
+  @@index([creatorId])
+  @@index([type, status])
+  @@index([status])
+  @@index([deletedAt])
+  @@map("creator_assets")
+}
+
+model AssetUsage {
+  id                String       @id @default(uuid())
+
+  assetId           String       @map("asset_id")
+  asset             CreatorAsset @relation(fields: [assetId], references: [id])
+
+  userId            String       @map("user_id")
+  user              User         @relation(fields: [userId], references: [id])
+
+  // Link to generation
+  studioSessionId   String?      @map("studio_session_id")
+
+  // Credits charged (from user's creditUnits)
+  unitsCharged      Int          @map("units_charged") // Asset fee portion only
+
+  // Payout tracking
+  settledAt         DateTime?    @map("settled_at") // When included in a payout
+  payoutId          String?      @map("payout_id")
+  payout            CreatorPayout? @relation(fields: [payoutId], references: [id])
+
+  createdAt         DateTime     @default(now()) @map("created_at")
+
+  @@index([assetId])
+  @@index([userId])
+  @@index([settledAt])
+  @@index([payoutId])
+  @@map("asset_usages")
+}
+
+model CreatorPayout {
+  id              String       @id @default(uuid())
+
+  creatorId       String       @map("creator_id")
+  creator         CreatorProfile @relation(fields: [creatorId], references: [id])
+
+  // Amount
+  amountFcfa      Int          @map("amount_fcfa") // Calculated from settled usages
+  usageCount      Int          @map("usage_count") // Number of usages in this payout
+
+  // Period
+  periodStart     DateTime     @map("period_start")
+  periodEnd       DateTime     @map("period_end")
+
+  // Status: pending → processing → completed/failed
+  status          String       @default("pending")
+
+  // Payment details (set when processing)
+  payoutMethod    String?      @map("payout_method")
+  payoutPhone     String?      @map("payout_phone") // Snapshot at time of payout
+  externalRef     String?      @map("external_ref") // Wave/OM transaction ID
+  processedAt     DateTime?    @map("processed_at")
+  failureReason   String?      @map("failure_reason")
+
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  usages          AssetUsage[]
+
+  @@index([creatorId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("creator_payouts")
+}
+
+model CreatorReview {
+  id              String       @id @default(uuid())
+
+  creatorId       String       @map("creator_id")
+  creator         CreatorProfile @relation(fields: [creatorId], references: [id])
+
+  userId          String       @map("user_id")
+  user            User         @relation(fields: [userId], references: [id])
+
+  assetId         String?      @map("asset_id") // Optional - review specific asset
+
+  rating          Int          // 1-5
+  comment         String?
+
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  @@unique([userId, creatorId]) // One review per user per creator
+  @@index([creatorId])
+  @@map("creator_reviews")
 }

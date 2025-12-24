@@ -13,6 +13,7 @@ import {
   Sparkles,
   ImageIcon,
   Plus,
+  Users,
 } from 'lucide-react';
 
 export default async function DashboardPage() {
@@ -168,7 +169,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid md:grid-cols-3 gap-4">
+      <div className="grid md:grid-cols-4 gap-4">
         <Link href="/studio">
           <Card className="h-full hover:border-violet-300 hover:shadow-md transition-all cursor-pointer group">
             <CardHeader>
@@ -223,6 +224,26 @@ export default async function DashboardPage() {
             <CardContent>
               <div className="flex items-center text-sm text-blue-600 font-medium">
                 Voir les produits
+                <ArrowRight className="ml-1 h-4 w-4" />
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/creator">
+          <Card className="h-full hover:border-amber-300 hover:shadow-md transition-all cursor-pointer group border-dashed">
+            <CardHeader>
+              <div className="w-12 h-12 bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 rounded-xl flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                <Users className="h-6 w-6 text-amber-600" />
+              </div>
+              <CardTitle className="text-lg">Devenir Créateur</CardTitle>
+              <CardDescription>
+                Gagnez de l&apos;argent en tant que mannequin ou photographe
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center text-sm text-amber-600 font-medium">
+                En savoir plus
                 <ArrowRight className="ml-1 h-4 w-4" />
               </div>
             </CardContent>

@@ -8,7 +8,9 @@ import {
   Palette,
   Settings,
   ArrowLeft,
-  Shield
+  Shield,
+  Users,
+  DollarSign,
 } from 'lucide-react';
 
 // Get superadmin emails from env
@@ -72,6 +74,20 @@ export default async function AdminLayout({
             >
               <Palette className="h-5 w-5" />
               Templates & Vibes
+            </Link>
+            <Link
+              href="/admin/assets"
+              className="flex items-center gap-3 px-4 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              <Users className="h-5 w-5" />
+              Creator Assets
+            </Link>
+            <Link
+              href="/admin/payouts"
+              className="flex items-center gap-3 px-4 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              <DollarSign className="h-5 w-5" />
+              Paiements
             </Link>
             <Link
               href="/admin/settings"
