@@ -800,7 +800,39 @@ export default function ProductsPage() {
                     {/* Dark overlay for better visibility of highlights */}
                     <div className="absolute inset-0 bg-black/30 pointer-events-none" />
 
-                    {/* Product highlight boxes positioned over the image */}
+                    {/* Single SVG overlay for ALL product paths - uses full image coordinates */}
+                    <svg
+                      viewBox="0 0 1 1"
+                      preserveAspectRatio="none"
+                      className="absolute inset-0 w-full h-full pointer-events-none"
+                      style={{ overflow: 'visible' }}
+                    >
+                      {detectedProducts.map((product, idx) => {
+                        const colors = ['#8b5cf6', '#22c55e', '#f97316', '#ec4899', '#06b6d4'];
+                        const color = colors[idx % colors.length];
+                        const isSelected = selectedProductIds.includes(product.id);
+
+                        if (!product.svgPath) return null;
+
+                        return (
+                          <path
+                            key={product.id}
+                            d={product.svgPath}
+                            fill={isSelected ? `${color}40` : `${color}20`}
+                            stroke={color}
+                            strokeWidth="0.008"
+                            className="cursor-pointer"
+                            style={{
+                              pointerEvents: 'all',
+                              filter: isSelected ? `drop-shadow(0 0 6px ${color})` : `drop-shadow(0 0 3px ${color})`,
+                            }}
+                            onClick={() => toggleProductSelection(product.id)}
+                          />
+                        );
+                      })}
+                    </svg>
+
+                    {/* Bounding box overlays for labels and fallback highlighting */}
                     {detectedProducts.map((product, idx) => {
                       const colors = ['#8b5cf6', '#22c55e', '#f97316', '#ec4899', '#06b6d4'];
                       const color = colors[idx % colors.length];
@@ -827,26 +859,8 @@ export default function ProductsPage() {
                             zIndex: isSelected ? 30 : 20,
                           }}
                         >
-                          {/* SVG segmentation path if available - precise product outline */}
-                          {product.svgPath ? (
-                            <svg
-                              viewBox="0 0 1 1"
-                              preserveAspectRatio="none"
-                              className="absolute inset-0 w-full h-full"
-                              style={{ overflow: 'visible' }}
-                            >
-                              <path
-                                d={product.svgPath}
-                                fill={isSelected ? `${color}40` : `${color}20`}
-                                stroke={color}
-                                strokeWidth="0.015"
-                                style={{
-                                  filter: `drop-shadow(0 0 4px ${color})`,
-                                }}
-                              />
-                            </svg>
-                          ) : (
-                            /* Fallback: colored border box when no SVG path */
+                          {/* Fallback: colored border box when no SVG path */}
+                          {!product.svgPath && (
                             <div
                               className="absolute inset-0 rounded transition-all"
                               style={{
