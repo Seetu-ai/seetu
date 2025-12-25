@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { uploadProductImage, isStorageConfigured, BUCKETS } from '@/lib/storage';
+import { getCurrentUser } from '@/lib/auth';
+import { uploadProductImage } from '@/lib/storage';
 
+/**
+ * POST /api/v1/upload
+ * Upload an image file
+ *
+ * Accepts multipart/form-data with 'file' field
+ * Supports both cookie and Bearer token auth (for mobile clients)
+ */
 export async function POST(req: NextRequest) {
-  // Check authentication
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
+  // Check authentication (supports both cookie and Bearer token)
+  const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -29,15 +34,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'File too large (max 10MB)' }, { status: 400 });
     }
 
-    // Get user ID for organizing uploads
-    const userId = user.id;
-
     // Upload to Supabase Storage
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    const { url: publicUrl } = await uploadProductImage(buffer, userId, file.name);
+    const { url: publicUrl, path } = await uploadProductImage(buffer, user.authId, file.name);
 
-    return NextResponse.json({ url: publicUrl });
+    return NextResponse.json({
+      url: publicUrl,
+      path,
+      fileName: file.name,
+      size: file.size,
+      contentType: file.type,
+    });
   } catch (error) {
     console.error('Upload error:', error);
     return NextResponse.json(

@@ -28,6 +28,7 @@ export const BUCKETS = {
   GENERATED: 'generated',       // AI generated images
   CLEAN_REFS: 'clean-refs',     // Processed product references
   BRANDS: 'brands',             // Brand logos, assets
+  LOCATIONS: 'locations',       // Street View and location images
   // Creator ecosystem buckets
   CREATOR_PUBLIC: 'creator-public',   // Public thumbnails, avatars
   CREATOR_PRIVATE: 'creator-private', // Consent docs, IDs, raw assets (NEVER public)
@@ -154,6 +155,20 @@ export async function uploadProductImage(
   const filename = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
   return uploadBuffer(BUCKETS.UPLOADS, buffer, filename, `image/${ext}`);
+}
+
+/**
+ * Upload Street View or location image
+ */
+export async function uploadLocationImage(
+  buffer: Buffer,
+  lat: number,
+  lng: number,
+  heading: number = 0
+): Promise<UploadResult> {
+  const filename = `streetview/${lat.toFixed(6)}_${lng.toFixed(6)}_h${heading}-${Date.now()}.jpg`;
+
+  return uploadBuffer(BUCKETS.LOCATIONS, buffer, filename, 'image/jpeg');
 }
 
 /**

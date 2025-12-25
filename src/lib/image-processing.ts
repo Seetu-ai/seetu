@@ -5,6 +5,7 @@
 
 import sharp from 'sharp';
 import { removeBackground } from './birefnet';
+import { uploadCleanReference } from './storage';
 
 interface BoundingBox {
   x_min: number;
@@ -174,19 +175,11 @@ export async function prepareCleanReference(
 }
 
 /**
- * Save buffer to temp file and return URL
+ * Save buffer to Supabase Storage and return URL
  */
 export async function saveCleanReference(buffer: Buffer, productId: string): Promise<string> {
-  const fs = await import('fs/promises');
-  const path = await import('path');
-
-  const filename = `clean-${productId}-${Date.now()}.png`;
-  const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'clean-refs');
-
-  await fs.mkdir(uploadDir, { recursive: true });
-  await fs.writeFile(path.join(uploadDir, filename), buffer);
-
-  return `/uploads/clean-refs/${filename}`;
+  const result = await uploadCleanReference(buffer, productId);
+  return result.url;
 }
 
 /**

@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
+import { uploadLocationImage } from '@/lib/storage';
 
 const GOOGLE_API_KEY = process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_AI_API_KEY;
 
 /**
  * POST /api/v1/studio/locations/streetview
- * Fetch and save a Street View image
+ * Fetch and save a Street View image to Supabase Storage
  */
 export async function POST(req: NextRequest) {
   if (!GOOGLE_API_KEY) {
@@ -45,15 +44,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Save to uploads directory
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'locations');
-    await fs.mkdir(uploadDir, { recursive: true });
-
-    const filename = `streetview-${Date.now()}-h${heading}.jpg`;
-    const filePath = path.join(uploadDir, filename);
-    await fs.writeFile(filePath, buffer);
-
-    const url = `/uploads/locations/${filename}`;
+    // Upload to Supabase Storage
+    const { url } = await uploadLocationImage(buffer, lat, lng, heading);
 
     return NextResponse.json({
       success: true,
