@@ -776,117 +776,94 @@ export default function ProductsPage() {
           </DialogHeader>
 
           <div className="space-y-4">
-            {/* Image with detected products and SVG segmentation outlines */}
-            {pendingImageUrl && (
-              <div className="bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden">
-                {/* Container for image and overlays - uses relative positioning */}
-                <div className="relative w-full" style={{ maxHeight: '350px' }}>
-                  {/* Original image - fill width, center vertically */}
-                  <img
-                    src={pendingImageUrl}
-                    alt="Uploaded"
-                    className="w-full h-auto object-contain"
-                    style={{ maxHeight: '350px' }}
-                    onError={(e) => {
-                      console.error('[IMAGE] Failed to load:', pendingImageUrl);
-                      (e.target as HTMLImageElement).src = '/placeholder-product.png';
-                    }}
-                  />
-                  {/* Semi-transparent overlay */}
-                  <div className="absolute inset-0 bg-black/30 pointer-events-none" />
-                  {/* Per-product overlays - positioned using percentage of image */}
-                  {detectedProducts.map((product, idx) => {
-                    const colors = ['#8b5cf6', '#22c55e', '#f97316', '#ec4899', '#06b6d4'];
-                    const color = colors[idx % colors.length];
-                    const isSelected = selectedProductIds.includes(product.id);
+            {/* Image with detected products highlighted */}
+            <div className="relative bg-slate-900 rounded-xl overflow-hidden" style={{ minHeight: '250px', maxHeight: '400px' }}>
+              {/* Debug info - remove after testing */}
+              {!pendingImageUrl && (
+                <div className="absolute inset-0 flex items-center justify-center text-white/50 text-sm">
+                  Image URL non disponible
+                </div>
+              )}
 
-                    // Ensure bbox values are valid (0-1 range)
-                    const bbox = {
-                      x_min: Math.max(0, Math.min(1, product.bbox.x_min || 0)),
-                      y_min: Math.max(0, Math.min(1, product.bbox.y_min || 0)),
-                      x_max: Math.max(0, Math.min(1, product.bbox.x_max || 1)),
-                      y_max: Math.max(0, Math.min(1, product.bbox.y_max || 1)),
-                    };
+              {/* Image container - centers the image */}
+              {pendingImageUrl && (
+                <div className="flex items-center justify-center h-full" style={{ minHeight: '250px' }}>
+                  <div className="relative inline-block max-w-full max-h-[400px]">
+                    {/* The actual image */}
+                    <img
+                      src={pendingImageUrl}
+                      alt="Uploaded product"
+                      className="block max-w-full max-h-[400px] h-auto w-auto"
+                      style={{ objectFit: 'contain' }}
+                    />
 
-                    return (
-                      <div
-                        key={product.id}
-                        onClick={() => toggleProductSelection(product.id)}
-                        className="absolute cursor-pointer transition-all duration-200"
-                        style={{
-                          left: `${bbox.x_min * 100}%`,
-                          top: `${bbox.y_min * 100}%`,
-                          width: `${(bbox.x_max - bbox.x_min) * 100}%`,
-                          height: `${(bbox.y_max - bbox.y_min) * 100}%`,
-                          zIndex: isSelected ? 30 : 20,
-                        }}
-                      >
-                        {/* Always show a visible box/outline */}
+                    {/* Dark overlay for better visibility of highlights */}
+                    <div className="absolute inset-0 bg-black/30 pointer-events-none" />
+
+                    {/* Product highlight boxes positioned over the image */}
+                    {detectedProducts.map((product, idx) => {
+                      const colors = ['#8b5cf6', '#22c55e', '#f97316', '#ec4899', '#06b6d4'];
+                      const color = colors[idx % colors.length];
+                      const isSelected = selectedProductIds.includes(product.id);
+
+                      // Clamp bbox values to 0-1 range
+                      const bbox = {
+                        x_min: Math.max(0, Math.min(1, product.bbox?.x_min ?? 0)),
+                        y_min: Math.max(0, Math.min(1, product.bbox?.y_min ?? 0)),
+                        x_max: Math.max(0, Math.min(1, product.bbox?.x_max ?? 1)),
+                        y_max: Math.max(0, Math.min(1, product.bbox?.y_max ?? 1)),
+                      };
+
+                      return (
                         <div
-                          className="absolute inset-0 rounded-md transition-all duration-200"
+                          key={product.id}
+                          onClick={() => toggleProductSelection(product.id)}
+                          className="absolute cursor-pointer"
                           style={{
-                            border: `3px solid ${color}`,
-                            backgroundColor: isSelected ? `${color}30` : `${color}15`,
-                            boxShadow: isSelected ? `0 0 20px ${color}80` : `0 0 10px ${color}40`,
-                          }}
-                        />
-
-                        {/* SVG path overlay if available */}
-                        {product.svgPath && (
-                          <svg
-                            viewBox="0 0 1 1"
-                            preserveAspectRatio="none"
-                            className="absolute inset-0 w-full h-full overflow-visible"
-                            style={{ pointerEvents: 'none' }}
-                          >
-                            <path
-                              d={product.svgPath}
-                              fill={isSelected ? `${color}50` : `${color}25`}
-                              stroke={color}
-                              strokeWidth="0.02"
-                              style={{
-                                filter: `drop-shadow(0 0 2px ${color})`,
-                              }}
-                            />
-                          </svg>
-                        )}
-
-                        {/* Colored number badge at top-left */}
-                        <div
-                          className="absolute flex items-center gap-1.5 px-2 py-1 text-xs font-bold rounded shadow-lg"
-                          style={{
-                            top: '-8px',
-                            left: '-4px',
-                            backgroundColor: color,
-                            color: 'white',
-                            boxShadow: `0 2px 8px ${color}80`,
+                            left: `${bbox.x_min * 100}%`,
+                            top: `${bbox.y_min * 100}%`,
+                            width: `${(bbox.x_max - bbox.x_min) * 100}%`,
+                            height: `${(bbox.y_max - bbox.y_min) * 100}%`,
+                            zIndex: isSelected ? 30 : 20,
                           }}
                         >
-                          <span className="w-4 h-4 bg-white/30 rounded-full flex items-center justify-center text-[10px]">
-                            {idx + 1}
-                          </span>
-                          <span className="max-w-[120px] truncate">{product.description}</span>
-                        </div>
-
-                        {/* Selection checkmark */}
-                        {isSelected && (
+                          {/* Colored border box */}
                           <div
-                            className="absolute w-6 h-6 rounded-full flex items-center justify-center shadow-lg border-2 border-white"
+                            className="absolute inset-0 rounded transition-all"
                             style={{
-                              top: '-8px',
-                              right: '-8px',
+                              border: `3px solid ${color}`,
+                              backgroundColor: isSelected ? `${color}35` : 'transparent',
+                              boxShadow: `0 0 0 1px ${color}, inset 0 0 20px ${color}30`,
+                            }}
+                          />
+
+                          {/* Product label badge */}
+                          <div
+                            className="absolute -top-7 left-0 px-2 py-1 text-xs font-semibold rounded shadow-lg whitespace-nowrap"
+                            style={{
                               backgroundColor: color,
+                              color: 'white',
                             }}
                           >
-                            <Check className="h-3.5 w-3.5 text-white" />
+                            {idx + 1}. {product.description}
                           </div>
-                        )}
-                      </div>
-                    );
-                  })}
+
+                          {/* Selection indicator */}
+                          {isSelected && (
+                            <div
+                              className="absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center border-2 border-white"
+                              style={{ backgroundColor: color }}
+                            >
+                              <Check className="h-3 w-3 text-white" />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* Product list */}
             <div className="space-y-2">
