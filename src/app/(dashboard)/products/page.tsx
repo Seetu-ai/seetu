@@ -827,19 +827,39 @@ export default function ProductsPage() {
                             zIndex: isSelected ? 30 : 20,
                           }}
                         >
-                          {/* Colored border box */}
-                          <div
-                            className="absolute inset-0 rounded transition-all"
-                            style={{
-                              border: `3px solid ${color}`,
-                              backgroundColor: isSelected ? `${color}35` : 'transparent',
-                              boxShadow: `0 0 0 1px ${color}, inset 0 0 20px ${color}30`,
-                            }}
-                          />
+                          {/* SVG segmentation path if available - precise product outline */}
+                          {product.svgPath ? (
+                            <svg
+                              viewBox="0 0 1 1"
+                              preserveAspectRatio="none"
+                              className="absolute inset-0 w-full h-full"
+                              style={{ overflow: 'visible' }}
+                            >
+                              <path
+                                d={product.svgPath}
+                                fill={isSelected ? `${color}40` : `${color}20`}
+                                stroke={color}
+                                strokeWidth="0.015"
+                                style={{
+                                  filter: `drop-shadow(0 0 4px ${color})`,
+                                }}
+                              />
+                            </svg>
+                          ) : (
+                            /* Fallback: colored border box when no SVG path */
+                            <div
+                              className="absolute inset-0 rounded transition-all"
+                              style={{
+                                border: `3px solid ${color}`,
+                                backgroundColor: isSelected ? `${color}35` : `${color}15`,
+                                boxShadow: `0 0 0 1px ${color}, inset 0 0 20px ${color}30`,
+                              }}
+                            />
+                          )}
 
                           {/* Product label badge */}
                           <div
-                            className="absolute -top-7 left-0 px-2 py-1 text-xs font-semibold rounded shadow-lg whitespace-nowrap"
+                            className="absolute -top-7 left-0 px-2 py-1 text-xs font-semibold rounded shadow-lg whitespace-nowrap max-w-[150px] truncate"
                             style={{
                               backgroundColor: color,
                               color: 'white',
