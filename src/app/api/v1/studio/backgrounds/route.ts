@@ -14,8 +14,15 @@ import { listMarketplaceAssets } from '@/lib/creators';
 export async function GET(req: NextRequest) {
   try {
     // Check auth (optional - used for marketplace locations)
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    let user = null;
+    try {
+      const supabase = await createClient();
+      const { data } = await supabase.auth.getUser();
+      user = data?.user || null;
+    } catch (authError) {
+      // Auth is optional for this endpoint - continue without user
+      console.log('Auth check skipped (no session):', authError);
+    }
 
     const { searchParams } = new URL(req.url);
     const type = searchParams.get('type');
