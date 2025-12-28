@@ -385,7 +385,14 @@ export async function getAssetImageSignedUrls(
   expiresInSeconds: number = 3600 // 1 hour for generation use
 ): Promise<string[]> {
   return Promise.all(
-    paths.map(path => getSignedUrl(BUCKETS.CREATOR_PRIVATE, path, expiresInSeconds))
+    paths.map(async (path) => {
+      // If already a public URL (e.g., Unsplash for demo models), return as-is
+      if (path.startsWith('http://') || path.startsWith('https://')) {
+        return path;
+      }
+      // Otherwise, get signed URL from private bucket
+      return getSignedUrl(BUCKETS.CREATOR_PRIVATE, path, expiresInSeconds);
+    })
   );
 }
 
