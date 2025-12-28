@@ -174,8 +174,24 @@ export async function constructPrompt(
     }
 
     sentences.push('Seamlessly harmonized into the environment with realistic shadows and reflections.');
-  } else if (brief.scene.type === 'studio') {
-    sentences.push('PURE WHITE STUDIO BACKGROUND ONLY. Completely white seamless backdrop, NO table, NO surface, NO texture, NO wood, NO props, NO environment. The product appears on an infinite white void. Professional e-commerce packshot style with soft diffused studio lighting and subtle shadow beneath the product. Clean, minimal, pure white everywhere except the product itself.');
+  } else if (brief.scene.type === 'studio' || brief.scene.type === 'solid_color') {
+    // Handle solid color backgrounds (including white studio)
+    const solidColor = (brief.scene as any).solidColor;
+    if (solidColor && solidColor !== '#FFFFFF') {
+      // Non-white solid color
+      const colorNames: Record<string, string> = {
+        '#000000': 'pure black',
+        '#F5F5DC': 'warm beige',
+        '#808080': 'neutral gray',
+        '#C67B5C': 'terracotta',
+        '#4A90D9': 'soft blue',
+      };
+      const colorName = colorNames[solidColor] || 'solid color';
+      sentences.push(`${colorName.toUpperCase()} SOLID BACKGROUND. Completely flat ${colorName} seamless backdrop, NO texture, NO gradient, NO pattern. The product appears on a pure ${colorName} infinite backdrop. Professional e-commerce packshot style with soft diffused studio lighting and subtle shadow beneath the product.`);
+    } else {
+      // White background
+      sentences.push('PURE WHITE STUDIO BACKGROUND ONLY. Completely white seamless backdrop, NO table, NO surface, NO texture, NO wood, NO props, NO environment. The product appears on an infinite white void. Professional e-commerce packshot style with soft diffused studio lighting and subtle shadow beneath the product. Clean, minimal, pure white everywhere except the product itself.');
+    }
   } else {
     sentences.push('Creative artistic background, dynamic composition.');
   }
@@ -361,8 +377,8 @@ export function buildNegativePrompt(brief: WizardBrief): string {
     );
   }
 
-  // CRITICAL: For studio/white background, exclude ALL environmental elements
-  if (brief.scene.type === 'studio') {
+  // CRITICAL: For studio/solid color background, exclude ALL environmental elements
+  if (brief.scene.type === 'studio' || brief.scene.type === 'solid_color') {
     negatives.push(
       'table',
       'wooden table',

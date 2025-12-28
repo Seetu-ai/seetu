@@ -6,7 +6,7 @@ import { devtools, persist } from 'zustand/middleware';
 // ═══════════════════════════════════════════════════════════════
 
 export type PresentationType = 'product_only' | 'on_model' | 'ghost';
-export type SceneType = 'real_place' | 'ai_generated' | 'studio';
+export type SceneType = 'real_place' | 'ai_generated' | 'studio' | 'solid_color';
 
 export interface ProductAnalysis {
   category: string;
@@ -60,6 +60,7 @@ export interface SceneState {
   backgroundId?: string;
   backgroundUrl?: string;
   backgroundName?: string;
+  solidColor?: string; // Hex color for solid_color type (e.g., "#FFFFFF")
   note?: string; // "Night time, rainy"
   locationAsset?: SelectedLocationAsset; // Selected marketplace location
 }
