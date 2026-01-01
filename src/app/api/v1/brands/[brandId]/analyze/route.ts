@@ -3,6 +3,21 @@ import { getCurrentUser } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { analyzeBrand } from '@/lib/brand-analysis';
+import { calculateEngagementScore } from '@/lib/performance-analysis';
+
+// Instagram post data from Apify
+interface ApifyInstagramPost {
+  id?: string;
+  displayUrl?: string;
+  thumbnailSrc?: string;
+  caption?: string;
+  likesCount?: number;
+  commentsCount?: number;
+  videoPlayCount?: number;
+  timestamp?: string;
+  // Nested structure alternative
+  latestPosts?: ApifyInstagramPost[];
+}
 
 interface RouteParams {
   params: Promise<{ brandId: string }>;
@@ -97,25 +112,47 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
     const apifyData = await apifyRes.json();
 
-    // Extract images and captions
+    // Extract images, captions, and engagement data
     const images: string[] = [];
     const captions: string[] = [];
+    const postsData: Array<{
+      instagramId?: string;
+      imageUrl: string;
+      caption?: string;
+      likesCount: number;
+      commentsCount: number;
+      viewsCount: number;
+      postedAt?: Date;
+    }> = [];
+
+    const processPost = (item: ApifyInstagramPost) => {
+      const imageUrl = item.displayUrl || item.thumbnailSrc;
+      if (imageUrl && images.length < 12) {
+        images.push(imageUrl);
+        if (item.caption) captions.push(item.caption);
+
+        // Collect engagement data for performance analytics
+        postsData.push({
+          instagramId: item.id,
+          imageUrl,
+          caption: item.caption,
+          likesCount: item.likesCount || 0,
+          commentsCount: item.commentsCount || 0,
+          viewsCount: item.videoPlayCount || 0,
+          postedAt: item.timestamp ? new Date(item.timestamp) : undefined,
+        });
+      }
+    };
 
     if (Array.isArray(apifyData)) {
       for (const item of apifyData) {
-        if (item.displayUrl && images.length < 12) {
-          images.push(item.displayUrl);
-          if (item.caption) captions.push(item.caption);
-        } else if (item.thumbnailSrc && images.length < 12) {
-          images.push(item.thumbnailSrc);
-          if (item.caption) captions.push(item.caption);
-        }
-        if (item.latestPosts && Array.isArray(item.latestPosts)) {
-          for (const post of item.latestPosts) {
-            if (post.displayUrl && images.length < 12) {
-              images.push(post.displayUrl);
-              if (post.caption) captions.push(post.caption);
-            }
+        processPost(item as ApifyInstagramPost);
+
+        // Handle nested latestPosts structure
+        const apifyItem = item as ApifyInstagramPost;
+        if (apifyItem.latestPosts && Array.isArray(apifyItem.latestPosts)) {
+          for (const post of apifyItem.latestPosts) {
+            processPost(post);
           }
         }
       }
@@ -174,10 +211,64 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
     console.log(`[BRAND_ANALYZE] Success! Brand ${brandId} updated`);
 
+    // Step 4: Save Instagram posts with engagement data for performance analytics
+    console.log(`[BRAND_ANALYZE] Saving ${postsData.length} Instagram posts with engagement data...`);
+
+    for (const postData of postsData) {
+      const engagementScore = calculateEngagementScore(
+        postData.likesCount,
+        postData.commentsCount,
+        postData.viewsCount
+      );
+
+      // Extract visual tokens from the brand DNA analysis for this post
+      // We'll use the overall brand visual tokens for now
+      const visualTokens = brandDNA.visual_tokens || [];
+
+      await prisma.instagramPost.upsert({
+        where: {
+          brandId_instagramId: {
+            brandId,
+            instagramId: postData.instagramId || postData.imageUrl,
+          },
+        },
+        update: {
+          imageUrl: postData.imageUrl,
+          caption: postData.caption,
+          likesCount: postData.likesCount,
+          commentsCount: postData.commentsCount,
+          viewsCount: postData.viewsCount,
+          engagementScore,
+          postedAt: postData.postedAt,
+          visualTokens,
+          lighting: brandDNA.photography_settings?.lighting,
+          framing: brandDNA.photography_settings?.framing,
+          scrapedAt: new Date(),
+        },
+        create: {
+          brandId,
+          instagramId: postData.instagramId || postData.imageUrl,
+          imageUrl: postData.imageUrl,
+          caption: postData.caption,
+          likesCount: postData.likesCount,
+          commentsCount: postData.commentsCount,
+          viewsCount: postData.viewsCount,
+          engagementScore,
+          postedAt: postData.postedAt,
+          visualTokens,
+          lighting: brandDNA.photography_settings?.lighting,
+          framing: brandDNA.photography_settings?.framing,
+        },
+      });
+    }
+
+    console.log(`[BRAND_ANALYZE] Saved ${postsData.length} Instagram posts`);
+
     return NextResponse.json({
       success: true,
       brand: updatedBrand,
       imagesAnalyzed: images.length,
+      postsWithEngagement: postsData.length,
     });
   } catch (error) {
     console.error('Error analyzing brand:', error);

@@ -88,6 +88,32 @@ enum AssetStatus {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// NEW FEATURE ENUMS
+// ═══════════════════════════════════════════════════════════════
+
+enum BatchStatus {
+  pending
+  processing
+  completed
+  failed
+  partial
+}
+
+enum CampaignStatus {
+  draft
+  active
+  completed
+  archived
+}
+
+enum VideoStatus {
+  pending
+  processing
+  completed
+  failed
+}
+
+// ═══════════════════════════════════════════════════════════════
 // USER - The primary entity (owns brands, credits, etc.)
 // ═══════════════════════════════════════════════════════════════
 
@@ -119,6 +145,11 @@ model User {
   assetUsages     AssetUsage[]
   creatorReviews  CreatorReview[]
 
+  // New feature relations
+  batchJobs       BatchJob[]
+  campaigns       Campaign[]
+  videoGenerations VideoGeneration[]
+
   @@map("users")
 }
 
@@ -149,6 +180,11 @@ model Brand {
 
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   products        Product[]
+
+  // New feature relations
+  instagramPosts  InstagramPost[]
+  campaigns       Campaign[]
+  performanceInsights Json?   @map("performance_insights") // Cached analytics
 
   @@index([userId])
   @@map("brands")
@@ -192,6 +228,9 @@ model Product {
   brand           Brand           @relation(fields: [brandId], references: [id], onDelete: Cascade)
   jobs            GenerationJob[]
   studioSessions  StudioSession[]
+
+  // New feature relations
+  batchGenerations BatchGeneration[]
 
   @@index([brandId])
   @@map("products")
@@ -682,4 +721,168 @@ model CreatorReview {
   @@unique([userId, creatorId]) // One review per user per creator
   @@index([creatorId])
   @@map("creator_reviews")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BATCH CATALOG GENERATION
+// ═══════════════════════════════════════════════════════════════
+
+model BatchJob {
+  id              String      @id @default(uuid())
+  userId          String      @map("user_id")
+  status          BatchStatus @default(pending)
+  productIds      String[]    @map("product_ids")
+  totalProducts   Int         @map("total_products")
+  styleSettings   Json        @map("style_settings") // {presentation, scene, brandId}
+  processedCount  Int         @default(0) @map("processed_count")
+  successCount    Int         @default(0) @map("success_count")
+  failedCount     Int         @default(0) @map("failed_count")
+  estimatedCredits Int        @map("estimated_credits")
+  usedCredits     Int         @default(0) @map("used_credits")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  completedAt     DateTime?   @map("completed_at")
+
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  generations     BatchGeneration[]
+
+  @@index([userId, status])
+  @@map("batch_jobs")
+}
+
+model BatchGeneration {
+  id          String    @id @default(uuid())
+  batchJobId  String    @map("batch_job_id")
+  productId   String    @map("product_id")
+  status      JobStatus @default(queued)
+  outputUrl   String?   @map("output_url")
+  caption     String?
+  errorMessage String?  @map("error_message")
+  creditsCost Int       @default(100) @map("credits_cost")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  completedAt DateTime? @map("completed_at")
+
+  batchJob    BatchJob  @relation(fields: [batchJobId], references: [id], onDelete: Cascade)
+  product     Product   @relation(fields: [productId], references: [id])
+
+  @@index([batchJobId, status])
+  @@map("batch_generations")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CAMPAIGN MODE
+// ═══════════════════════════════════════════════════════════════
+
+model CampaignTemplate {
+  id          String  @id @default(uuid())
+  slug        String  @unique
+  name        String
+  nameFr      String  @map("name_fr")
+  thumbnailUrl String? @map("thumbnail_url")
+  styleLock   Json    @map("style_lock") // lighting, colorGrading, mood, visualTokens
+  occasion    String? // "Tabaski", "Ramadan", etc.
+  isPremium   Boolean @default(false) @map("is_premium")
+  usageCount  Int     @default(0) @map("usage_count")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  campaigns   Campaign[]
+
+  @@map("campaign_templates")
+}
+
+model Campaign {
+  id            String         @id @default(uuid())
+  userId        String         @map("user_id")
+  brandId       String?        @map("brand_id")
+  templateId    String?        @map("template_id")
+  name          String
+  targetCount   Int            @default(10) @map("target_count") // 5-20 images
+  styleLock     Json           @map("style_lock")
+  styleSeed     Int?           @map("style_seed") // For consistency
+  status        CampaignStatus @default(draft)
+  generatedCount Int           @default(0) @map("generated_count")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  brand         Brand?         @relation(fields: [brandId], references: [id])
+  template      CampaignTemplate? @relation(fields: [templateId], references: [id])
+  images        CampaignImage[]
+
+  @@index([userId, status])
+  @@map("campaigns")
+}
+
+model CampaignImage {
+  id          String   @id @default(uuid())
+  campaignId  String   @map("campaign_id")
+  productId   String?  @map("product_id")
+  outputUrl   String?  @map("output_url")
+  approved    Boolean?
+  sortOrder   Int      @default(0) @map("sort_order")
+  caption     String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@map("campaign_images")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PERFORMANCE-LINKED DNA (Instagram Analytics)
+// ═══════════════════════════════════════════════════════════════
+
+model InstagramPost {
+  id            String   @id @default(uuid())
+  brandId       String   @map("brand_id")
+  instagramId   String?  @map("instagram_id")
+  imageUrl      String   @map("image_url")
+  caption       String?
+
+  // Engagement metrics
+  likesCount    Int      @default(0) @map("likes_count")
+  commentsCount Int      @default(0) @map("comments_count")
+  viewsCount    Int      @default(0) @map("views_count")
+
+  // Visual analysis
+  visualTokens  String[] @default([]) @map("visual_tokens")
+  lighting      String?
+  framing       String?
+
+  // Derived
+  engagementScore Float? @map("engagement_score")
+  postedAt      DateTime? @map("posted_at")
+  scrapedAt     DateTime @default(now()) @map("scraped_at")
+
+  brand         Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@unique([brandId, instagramId])
+  @@index([brandId, engagementScore])
+  @@map("instagram_posts")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// VIDEO GENERATION (Kling AI)
+// ═══════════════════════════════════════════════════════════════
+
+model VideoGeneration {
+  id              String      @id @default(uuid())
+  userId          String      @map("user_id")
+  sourceImageUrl  String      @map("source_image_url")
+  prompt          String?
+  duration        Int         @default(5) // 5 or 10 seconds
+  quality         String      @default("standard") // standard | pro
+  externalTaskId  String?     @map("external_task_id") // Kling task ID
+  status          VideoStatus @default(pending)
+  outputUrl       String?     @map("output_url")
+  creditsCost     Int         @default(0) @map("credits_cost")
+  errorMessage    String?     @map("error_message")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  completedAt     DateTime?   @map("completed_at")
+
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([externalTaskId])
+  @@map("video_generations")
 }

@@ -8,6 +8,12 @@ export const CREDIT_UNIT_4K = 200;        // 2 credits
 export const CREDIT_UNIT_CAPTION = 25;    // 0.25 credits
 export const FREE_TRIAL_UNITS = 300;      // 3 credits
 
+// Video generation costs (Kling AI)
+export const CREDIT_UNIT_VIDEO_5S_STANDARD = 300;   // 3 credits
+export const CREDIT_UNIT_VIDEO_5S_PRO = 600;        // 6 credits
+export const CREDIT_UNIT_VIDEO_10S_STANDARD = 500;  // 5 credits
+export const CREDIT_UNIT_VIDEO_10S_PRO = 1000;      // 10 credits
+
 // Credit packs (FCFA)
 export const CREDIT_PACKS = [
   { id: 'starter', name: 'Starter', credits: 5, units: 500, priceFcfa: 2500 },
@@ -46,6 +52,34 @@ export function getJobCost(mode: 'preview' | 'final' | 'final_4k' | 'caption'): 
     default:
       return CREDIT_UNIT_PREVIEW;
   }
+}
+
+// Video generation types
+export type VideoDuration = 5 | 10;
+export type VideoQuality = 'standard' | 'pro';
+
+// Get cost in units for video generation
+export function getVideoCost(duration: VideoDuration, quality: VideoQuality): number {
+  if (duration === 5) {
+    return quality === 'pro' ? CREDIT_UNIT_VIDEO_5S_PRO : CREDIT_UNIT_VIDEO_5S_STANDARD;
+  } else {
+    return quality === 'pro' ? CREDIT_UNIT_VIDEO_10S_PRO : CREDIT_UNIT_VIDEO_10S_STANDARD;
+  }
+}
+
+// Get all video pricing options
+export function getVideoPricing(): Array<{
+  duration: VideoDuration;
+  quality: VideoQuality;
+  units: number;
+  credits: number;
+}> {
+  return [
+    { duration: 5, quality: 'standard', units: CREDIT_UNIT_VIDEO_5S_STANDARD, credits: 3 },
+    { duration: 5, quality: 'pro', units: CREDIT_UNIT_VIDEO_5S_PRO, credits: 6 },
+    { duration: 10, quality: 'standard', units: CREDIT_UNIT_VIDEO_10S_STANDARD, credits: 5 },
+    { duration: 10, quality: 'pro', units: CREDIT_UNIT_VIDEO_10S_PRO, credits: 10 },
+  ];
 }
 
 interface DebitCreditsParams {
