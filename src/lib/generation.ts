@@ -74,14 +74,22 @@ async function generateWithGemini(
     // Get product image as base64
     const productImage = await imageUrlToBase64(productImageUrl);
 
-    // Build the full prompt
-    let fullPrompt = `Generate a professional product photography image based on this product.
+    // Build the full prompt with STRONG product reproduction instructions
+    let fullPrompt = `You are a professional product photographer. Generate a new product photo.
 
-Style/Scene: ${prompt}
+CRITICAL - PRODUCT REPRODUCTION:
+The image provided is the ACTUAL PRODUCT you must reproduce. This is NOT a style reference.
+You MUST:
+1. COPY the EXACT product - same shape, colors, labels, brand, design
+2. Keep every detail identical: logos, text, patterns, materials, proportions
+3. Do NOT redesign or create a different product
+4. The product in your output must be RECOGNIZABLE as the SAME product
 
-${negativePrompt ? `Avoid: ${negativePrompt}` : ''}
+SCENE/STYLE: ${prompt}
 
-Keep the product recognizable and faithful to the original, but place it in the described setting with professional lighting and composition.`;
+${negativePrompt ? `AVOID: ${negativePrompt}` : ''}
+
+OUTPUT: Place the EXACT product from the reference image into the described setting with professional lighting. The product must remain identical to the original.`;
 
     // Create the request with image context if available
     let result;
