@@ -56,8 +56,8 @@ export async function POST(
     const styleLock = campaign.styleLock as unknown as StyleLock;
 
     // Build prompt with style lock
-    const basePrompt = campaign.brand?.visualDna
-      ? `Product photo in brand style. ${campaign.brand.visualDna}`
+    const basePrompt = campaign.brand?.visualDNA
+      ? `Product photo in brand style. ${campaign.brand.visualDNA}`
       : 'Professional product photography, high quality, studio lighting';
 
     const styledPrompt = applyStyleLock(basePrompt, styleLock);
