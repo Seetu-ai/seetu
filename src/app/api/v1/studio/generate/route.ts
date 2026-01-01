@@ -576,7 +576,14 @@ Model Reference: The model images provided show the EXACT person who should wear
 
       fullPrompt = `Generate a professional product photography image.
 
-Product Image: First image provided - THIS IS THE EXACT PRODUCT TO USE. Keep the product IDENTICAL - same label, same design, same brand, same colors, same text. Do NOT redesign or modify the product appearance in any way.
+PRODUCT IMAGE (First image): THIS IS THE EXACT AND ONLY PRODUCT TO SHOW.
+STRICT RULES FOR THE PRODUCT:
+- Reproduce this EXACT garment/item - same design, same color, same fabric, same details
+- Do NOT add any extra clothing, layers, accessories, or items that are not in the original image
+- Do NOT add undershirts, inner layers, scarves, jewelry, or any other items
+- The product must appear EXACTLY as shown - nothing added, nothing removed
+- If it's a single garment, show ONLY that single garment - no visible clothing underneath
+
 ${backgroundUrl ? 'Background Reference: Second image provided - place the product naturally into this scene with matching lighting and shadows.' : ''}
 ${moodboardUrl ? 'Style Reference: Use the style, lighting, and mood from the reference image.' : ''}
 ${modelInstruction}
