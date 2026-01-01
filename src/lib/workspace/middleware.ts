@@ -51,10 +51,7 @@ export async function getWorkspaceContext(
   const brand = await prisma.brand.findFirst({
     where: {
       userId: user.id,
-      OR: [
-        { slug },
-        { id: slug },
-      ],
+      id: slug,
     },
   });
 
@@ -84,7 +81,7 @@ export async function getWorkspaceContext(
     workspace: {
       id: brand.id,
       name: brand.name,
-      slug: brand.slug || brand.id,
+      slug: brand.id,
     },
     role: userRole,
   };
