@@ -64,7 +64,7 @@ export interface VerbalDNA {
  * Build a WizardBrief from a product and style settings
  */
 export function buildBriefFromProduct(
-  product: Product & { metadata?: Record<string, unknown> | null },
+  product: Product,
   styleSettings: BatchStyleSettings,
   brandId?: string
 ): WizardBrief {
@@ -74,7 +74,7 @@ export function buildBriefFromProduct(
   // 2. Under metadata.analysis - legacy format
   let analysis: ProductAnalysis | undefined;
 
-  if (product.metadata && typeof product.metadata === 'object') {
+  if (product.metadata && typeof product.metadata === 'object' && !Array.isArray(product.metadata)) {
     const meta = product.metadata as Record<string, unknown>;
 
     // Check if analysis is nested under 'analysis' key (legacy)
