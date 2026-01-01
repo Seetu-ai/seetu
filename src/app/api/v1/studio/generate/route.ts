@@ -220,6 +220,7 @@ export async function POST(req: NextRequest) {
 
     // Prepare product reference image (clean reference if multi-product image)
     let productImageUrl = brief.product.url;
+    const originalProductUrl = brief.product.url; // Keep original as fallback
 
     if (brief.product.id) {
       try {
@@ -233,21 +234,40 @@ export async function POST(req: NextRequest) {
         if (metadata?.bbox) {
           console.log('[STUDIO] Product has bbox metadata, creating clean reference...');
           try {
-            productImageUrl = await getCleanReferenceUrl(
+            const cleanRefUrl = await getCleanReferenceUrl(
               product?.originalUrl || brief.product.url,
               brief.product.id,
               metadata.bbox,
               metadata.svgPath
             );
-            console.log('[STUDIO] Clean reference created:', productImageUrl);
+            console.log('[STUDIO] Clean reference created:', cleanRefUrl);
+
+            // Verify the clean reference is accessible before using it
+            try {
+              const verifyResponse = await fetch(cleanRefUrl, { method: 'HEAD' });
+              const contentType = verifyResponse.headers.get('content-type') || '';
+              if (verifyResponse.ok && contentType.startsWith('image/')) {
+                productImageUrl = cleanRefUrl;
+                console.log('[STUDIO] ✅ Clean reference verified and accessible');
+              } else {
+                console.warn('[STUDIO] ⚠️ Clean reference not accessible (status:', verifyResponse.status, 'type:', contentType, '), using original');
+                productImageUrl = originalProductUrl;
+              }
+            } catch (verifyError) {
+              console.warn('[STUDIO] ⚠️ Could not verify clean reference, using original:', verifyError);
+              productImageUrl = originalProductUrl;
+            }
           } catch (cleanRefError) {
             console.warn('[STUDIO] Failed to create clean reference, using original:', cleanRefError);
+            productImageUrl = originalProductUrl;
           }
         }
       } catch (lookupError) {
         console.warn('[STUDIO] Failed to lookup product metadata:', lookupError);
       }
     }
+
+    console.log('[STUDIO] Final product image URL:', productImageUrl);
 
     // Generate image
     const outputUrl = await generateWithGemini(
