@@ -14,18 +14,21 @@ import {
   Copy,
   Check,
   Pencil,
+  Film,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { VideoGenerationModal } from './video-generation-modal';
 
 export function CanvasPreview() {
   const [feedbackInput, setFeedbackInput] = useState('');
   const [copiedCaption, setCopiedCaption] = useState(false);
   const [isEditingCaption, setIsEditingCaption] = useState(false);
   const [editedCaption, setEditedCaption] = useState('');
+  const [showVideoModal, setShowVideoModal] = useState(false);
 
   const {
     products,
@@ -328,6 +331,14 @@ export function CanvasPreview() {
                 Télécharger
               </Button>
               <Button
+                variant="outline"
+                onClick={() => setShowVideoModal(true)}
+                className="border-violet-300 text-violet-600 hover:bg-violet-50"
+              >
+                <Film className="h-4 w-4 mr-2" />
+                Animer
+              </Button>
+              <Button
                 onClick={handleNewSession}
                 className="bg-violet-600 hover:bg-violet-700 text-white"
               >
@@ -338,6 +349,15 @@ export function CanvasPreview() {
           )}
         </div>
       </div>
+
+      {/* Video Generation Modal */}
+      {latestGeneratedImage?.url && (
+        <VideoGenerationModal
+          open={showVideoModal}
+          onOpenChange={setShowVideoModal}
+          sourceImageUrl={latestGeneratedImage.url}
+        />
+      )}
     </main>
   );
 }
