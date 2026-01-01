@@ -52,7 +52,7 @@ export function BatchUpload({ maxFiles = 20, onFilesUploaded }: BatchUploadProps
     accept: {
       'image/*': ['.png', '.jpg', '.jpeg', '.webp'],
     },
-    maxFiles: maxFiles - files.length,
+    multiple: true,
     disabled: files.length >= maxFiles || isUploading,
   });
 
