@@ -6,7 +6,8 @@ import {
   checkBatchCredits,
   getBatchJobProgress,
 } from '@/lib/batch-processor';
-import { enqueueBatchJob } from '@/lib/queues/batch-queue';
+import { enqueueBatchJob, getBatchQueue } from '@/lib/queues/batch-queue';
+import { processBatchJob } from '@/lib/workers/batch-worker';
 import { getPresetById } from '@/lib/batch-presets';
 import type { BatchStyleSettings } from '@/lib/batch-processor';
 
@@ -88,14 +89,28 @@ export async function POST(request: NextRequest) {
     // Create batch job
     const batchJob = await createBatchJob(user.id, productIds, finalStyleSettings);
 
-    // Enqueue for background processing
-    const jobId = await enqueueBatchJob({
+    const jobData = {
       batchJobId: batchJob.id,
       userId: user.id,
       presetId,
-    });
+    };
 
-    console.log(`[BATCH] Job ${batchJob.id} enqueued as ${jobId}`);
+    // Check if Redis queue is available
+    const queue = getBatchQueue();
+
+    if (queue) {
+      // Enqueue for background processing with Redis
+      const jobId = await enqueueBatchJob(jobData);
+      console.log(`[BATCH] Job ${batchJob.id} enqueued to Redis as ${jobId}`);
+    } else {
+      // No Redis - process in background (non-blocking)
+      console.log(`[BATCH] No Redis queue, processing ${batchJob.id} inline`);
+
+      // Start processing in background (don't await)
+      processBatchJob(jobData).catch((err) => {
+        console.error(`[BATCH] Inline processing failed for ${batchJob.id}:`, err);
+      });
+    }
 
     // Return job info
     return NextResponse.json({
