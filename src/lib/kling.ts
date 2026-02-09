@@ -1,7 +1,10 @@
 /**
  * Kling AI Video Generation Integration
- * Uses AIML API to access Kling v1.6 Pro Image-to-Video
+ * Uses the official Kling API with JWT authentication (Access Key + Secret Key)
+ * Docs: https://app.klingai.com/global/dev/document-api
  */
+
+import crypto from 'crypto';
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES
@@ -21,72 +24,140 @@ export interface KlingTaskResponse {
   error?: string;
 }
 
-interface AIMLAPIStartResponse {
-  id: string;
-  status: string;
-}
-
-interface AIMLAPIStatusResponse {
-  id: string;
-  status: 'queued' | 'processing' | 'completed' | 'failed';
-  video?: {
-    url: string;
+interface KlingAPIResponse {
+  code: number;
+  message: string;
+  request_id: string;
+  data?: {
+    task_id: string;
+    task_status: string;
+    task_status_msg?: string;
+    task_result?: {
+      videos?: Array<{
+        id: string;
+        url: string;
+        duration: string;
+      }>;
+    };
+    created_at?: number;
+    updated_at?: number;
   };
-  error?: string;
 }
 
 // ═══════════════════════════════════════════════════════════════
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════
 
-const AIML_API_URL = 'https://api.aimlapi.com';
-const KLING_MODEL = 'kling-video/v1.6/pro/image-to-video';
+const KLING_API_BASE = 'https://api.klingai.com';
+const JWT_EXPIRY_SECONDS = 1800; // 30 minutes
+
+// ═══════════════════════════════════════════════════════════════
+// JWT TOKEN GENERATION
+// ═══════════════════════════════════════════════════════════════
+
+function base64UrlEncode(data: Buffer): string {
+  return data.toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}
+
+function generateJWT(accessKey: string, secretKey: string): string {
+  const now = Math.floor(Date.now() / 1000);
+
+  const header = {
+    alg: 'HS256',
+    typ: 'JWT',
+  };
+
+  const payload = {
+    iss: accessKey,
+    exp: now + JWT_EXPIRY_SECONDS,
+    nbf: now - 5,
+    iat: now,
+  };
+
+  const encodedHeader = base64UrlEncode(Buffer.from(JSON.stringify(header)));
+  const encodedPayload = base64UrlEncode(Buffer.from(JSON.stringify(payload)));
+
+  const signingInput = `${encodedHeader}.${encodedPayload}`;
+  const signature = crypto
+    .createHmac('sha256', secretKey)
+    .update(signingInput)
+    .digest();
+
+  return `${signingInput}.${base64UrlEncode(signature)}`;
+}
 
 // ═══════════════════════════════════════════════════════════════
 // API CLIENT
 // ═══════════════════════════════════════════════════════════════
 
 class KlingClient {
-  private apiKey: string;
+  private accessKey: string;
+  private secretKey: string;
+  private cachedToken: string | null = null;
+  private tokenExpiresAt: number = 0;
 
   constructor() {
-    const apiKey = process.env.AIMLAPI_KEY;
-    if (!apiKey) {
-      throw new Error('AIMLAPI_KEY environment variable is not set');
+    const accessKey = process.env.KLING_ACCESS_KEY;
+    const secretKey = process.env.KLING_SECRET_KEY;
+    if (!accessKey || !secretKey) {
+      throw new Error('KLING_ACCESS_KEY and KLING_SECRET_KEY environment variables are required');
     }
-    this.apiKey = apiKey;
+    this.accessKey = accessKey;
+    this.secretKey = secretKey;
+  }
+
+  private getToken(): string {
+    const now = Math.floor(Date.now() / 1000);
+    // Refresh token 60 seconds before expiry
+    if (this.cachedToken && this.tokenExpiresAt > now + 60) {
+      return this.cachedToken;
+    }
+    this.cachedToken = generateJWT(this.accessKey, this.secretKey);
+    this.tokenExpiresAt = now + JWT_EXPIRY_SECONDS;
+    return this.cachedToken;
   }
 
   /**
-   * Start a video generation task
+   * Start a video generation task (image-to-video)
    */
   async startGeneration(params: KlingGenerationParams): Promise<KlingTaskResponse> {
+    const token = this.getToken();
+
     try {
-      const response = await fetch(`${AIML_API_URL}/v2/generate/video/kling/generation`, {
+      const response = await fetch(`${KLING_API_BASE}/v1/videos/image2video`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: KLING_MODEL,
-          image_url: params.imageUrl,
+          model_name: 'kling-v1',
+          image: params.imageUrl,
           prompt: params.prompt || 'Subtle natural motion, product showcase, smooth camera movement',
+          mode: 'std',
           duration: String(params.duration),
-          aspect_ratio: params.aspectRatio || '1:1',
+          cfg_scale: 0.5,
         }),
       });
 
       if (!response.ok) {
         const errorText = await response.text();
         console.error('[KLING] API Error:', response.status, errorText);
-        throw new Error(`Kling API error: ${response.status}`);
+        throw new Error(`Kling API error: ${response.status} - ${errorText}`);
       }
 
-      const data: AIMLAPIStartResponse = await response.json();
+      const data: KlingAPIResponse = await response.json();
+
+      if (data.code !== 0 || !data.data?.task_id) {
+        console.error('[KLING] API returned error:', data);
+        throw new Error(`Kling API error: ${data.message || 'Unknown error'}`);
+      }
 
       return {
-        taskId: data.id,
+        taskId: data.data.task_id,
         status: 'pending',
       };
     } catch (error) {
@@ -99,11 +170,13 @@ class KlingClient {
    * Check the status of a video generation task
    */
   async checkStatus(taskId: string): Promise<KlingTaskResponse> {
+    const token = this.getToken();
+
     try {
-      const response = await fetch(`${AIML_API_URL}/v2/generate/video/kling/generation/${taskId}`, {
+      const response = await fetch(`${KLING_API_BASE}/v1/videos/image2video/${taskId}`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -113,19 +186,33 @@ class KlingClient {
         throw new Error(`Kling API error: ${response.status}`);
       }
 
-      const data: AIMLAPIStatusResponse = await response.json();
+      const data: KlingAPIResponse = await response.json();
 
-      // Map AIML status to our status
+      if (data.code !== 0) {
+        console.error('[KLING] Status check returned error:', data);
+        throw new Error(`Kling API error: ${data.message || 'Unknown error'}`);
+      }
+
+      // Map Kling task_status to our status
+      const taskStatus = data.data?.task_status;
       let status: KlingTaskResponse['status'] = 'pending';
-      if (data.status === 'processing') status = 'processing';
-      else if (data.status === 'completed') status = 'completed';
-      else if (data.status === 'failed') status = 'failed';
+
+      if (taskStatus === 'processing') {
+        status = 'processing';
+      } else if (taskStatus === 'succeed') {
+        status = 'completed';
+      } else if (taskStatus === 'failed') {
+        status = 'failed';
+      }
+
+      // Extract video URL from completed task
+      const videoUrl = data.data?.task_result?.videos?.[0]?.url;
 
       return {
-        taskId: data.id,
+        taskId,
         status,
-        videoUrl: data.video?.url,
-        error: data.error,
+        videoUrl: status === 'completed' ? videoUrl : undefined,
+        error: status === 'failed' ? (data.data?.task_status_msg || 'Video generation failed') : undefined,
       };
     } catch (error) {
       console.error('[KLING] Status check error:', error);
@@ -233,5 +320,5 @@ export function buildVideoPrompt(productDescription?: string): string {
  * Check if Kling API is configured
  */
 export function isKlingConfigured(): boolean {
-  return !!process.env.AIMLAPI_KEY;
+  return !!(process.env.KLING_ACCESS_KEY && process.env.KLING_SECRET_KEY);
 }
