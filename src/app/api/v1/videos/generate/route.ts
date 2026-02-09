@@ -95,6 +95,7 @@ export async function POST(request: NextRequest) {
         imageUrl: sourceImageUrl,
         prompt: prompt || buildVideoPrompt(),
         duration,
+        mode: quality === 'pro' ? 'pro' : 'std',
       });
 
       // Update with external task ID

@@ -14,6 +14,7 @@ export interface KlingGenerationParams {
   imageUrl: string;
   prompt?: string;
   duration: 5 | 10;  // seconds
+  mode?: 'std' | 'pro';  // std = standard, pro = higher quality
   aspectRatio?: '16:9' | '9:16' | '1:1';
 }
 
@@ -134,10 +135,10 @@ class KlingClient {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model_name: 'kling-v1',
+          model_name: 'kling-v1-6',
           image: params.imageUrl,
           prompt: params.prompt || 'Subtle natural motion, product showcase, smooth camera movement',
-          mode: 'std',
+          mode: params.mode || 'std',
           duration: String(params.duration),
           cfg_scale: 0.5,
         }),
