@@ -10,10 +10,11 @@ import {
   Zap,
   CreditCard,
   ArrowRight,
-  Sparkles,
   ImageIcon,
   Plus,
   Users,
+  Printer,
+  Monitor,
 } from 'lucide-react';
 
 export default async function DashboardPage() {
@@ -169,7 +170,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid md:grid-cols-4 gap-4">
+      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
         <Link href="/studio">
           <Card className="h-full hover:border-violet-300 hover:shadow-md transition-all cursor-pointer group">
             <CardHeader>
@@ -184,6 +185,46 @@ export default async function DashboardPage() {
             <CardContent>
               <div className="flex items-center text-sm text-violet-600 font-medium">
                 Commencer
+                <ArrowRight className="ml-1 h-4 w-4" />
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/print">
+          <Card className="h-full hover:border-emerald-300 hover:shadow-md transition-all cursor-pointer group">
+            <CardHeader>
+              <div className="w-12 h-12 bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 rounded-xl flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                <Printer className="h-6 w-6 text-emerald-600" />
+              </div>
+              <CardTitle className="text-lg">Imprimerie</CardTitle>
+              <CardDescription>
+                Créez des devis, passez commande et imprimez vos visuels
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center text-sm text-emerald-600 font-medium">
+                Ouvrir l&apos;imprimerie
+                <ArrowRight className="ml-1 h-4 w-4" />
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/billboards">
+          <Card className="h-full hover:border-fuchsia-300 hover:shadow-md transition-all cursor-pointer group">
+            <CardHeader>
+              <div className="w-12 h-12 bg-gradient-to-br from-fuchsia-100 to-pink-100 dark:from-fuchsia-900/30 dark:to-pink-900/30 rounded-xl flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                <Monitor className="h-6 w-6 text-fuchsia-600" />
+              </div>
+              <CardTitle className="text-lg">Panneaux</CardTitle>
+              <CardDescription>
+                Diffusez vos campagnes sur les écrans publicitaires de Dakar
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center text-sm text-fuchsia-600 font-medium">
+                Voir les panneaux
                 <ArrowRight className="ml-1 h-4 w-4" />
               </div>
             </CardContent>

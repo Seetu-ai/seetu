@@ -11,6 +11,8 @@ import {
   Settings,
   Palette,
   Layers,
+  Printer,
+  Monitor,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
@@ -44,6 +46,18 @@ const navItems = [
     title: 'Studio',
     href: '/studio',
     icon: Layers,
+    badge: 'New',
+  },
+  {
+    title: 'Imprimerie',
+    href: '/print',
+    icon: Printer,
+    badge: 'New',
+  },
+  {
+    title: 'Panneaux',
+    href: '/billboards',
+    icon: Monitor,
     badge: 'New',
   },
   {
@@ -111,9 +125,9 @@ export function DashboardNav({ user, mobile }: NavProps) {
             >
               <Icon className="h-5 w-5" />
               <span className="flex-1">{item.title}</span>
-              {(item as any).badge && (
+              {item.badge && (
                 <Badge variant="secondary" className="bg-amber-100 text-amber-700 text-[10px] px-1.5 py-0">
-                  {(item as any).badge}
+                  {item.badge}
                 </Badge>
               )}
             </Link>
