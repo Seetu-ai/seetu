@@ -314,6 +314,18 @@ export async function uploadIdDocument(
   return uploadBufferPrivate(BUCKETS.CREATOR_PRIVATE, buffer, filename, contentType);
 }
 
+export async function uploadWhatsAppIdDoc(
+  buffer: Buffer,
+  phone: string,
+  contentType: string = 'image/jpeg'
+): Promise<UploadResult> {
+  const ext = contentType.split('/')[1] || 'jpg';
+  const safePhone = phone.replace(/\D/g, '') || 'unknown';
+  const filename = `whatsapp/${safePhone}/id-doc-${Date.now()}.${ext}`;
+
+  return uploadBufferPrivate(BUCKETS.CREATOR_PRIVATE, buffer, filename, contentType);
+}
+
 /**
  * Upload selfie verification (private - NEVER expose publicly)
  */

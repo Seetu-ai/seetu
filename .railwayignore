@@ -1,0 +1,13 @@
+node_modules
+.next
+out
+build
+.git
+.DS_Store
+coverage
+public/uploads
+public/test-*.jpg
+public/test-*.png
+*.log
+*.tsbuildinfo
+.env*

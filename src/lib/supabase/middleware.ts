@@ -58,11 +58,9 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith(path)
   );
 
-  // Auth routes (redirect if already logged in)
-  const authPaths = ['/login', '/signup'];
-  const isAuthPath = authPaths.some((path) =>
-    request.nextUrl.pathname.startsWith(path)
-  );
+  // Keep /login accessible even if a stale auth cookie exists.
+  const isSignupPath = request.nextUrl.pathname.startsWith('/signup');
+  const requestedRedirect = request.nextUrl.searchParams.get('redirect');
 
   if (isProtectedPath && !user) {
     const url = request.nextUrl.clone();
@@ -71,9 +69,10 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (isAuthPath && user) {
+  if (isSignupPath && user && !requestedRedirect) {
     const url = request.nextUrl.clone();
-    url.pathname = '/';
+    url.pathname = '/dashboard';
+    url.search = '';
     return NextResponse.redirect(url);
   }
 
