@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import prisma from '@/lib/prisma';
 import { calculatePrice, cfaToCredits } from '@/lib/billboard/pricing';
 
 export async function POST(request: NextRequest) {

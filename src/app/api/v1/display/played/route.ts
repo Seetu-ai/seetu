@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import prisma from '@/lib/prisma';
 import { markAsPlaying, markAsCompleted, getNextContent } from '@/lib/billboard/queue-manager';
 import { onPlaybackComplete } from '@/lib/billboard/whatsapp/message-handler';
 

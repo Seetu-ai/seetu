@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import prisma from '@/lib/prisma';
 import { BillboardStatus } from '@prisma/client';
 
 export async function POST(request: NextRequest) {

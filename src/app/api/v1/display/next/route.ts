@@ -7,7 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import prisma from '@/lib/prisma';
 import { getNextContent, getCurrentlyPlaying } from '@/lib/billboard/queue-manager';
 
 export async function GET(request: NextRequest) {

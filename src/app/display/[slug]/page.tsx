@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { prisma } from '@/lib/prisma';
+import prisma from '@/lib/prisma';
 import type { DisplayConfig } from '@/lib/display/types';
 import { generateDisplayToken } from '@/lib/display/display-token';
 import { DisplayPlayer } from './_components/display-player';

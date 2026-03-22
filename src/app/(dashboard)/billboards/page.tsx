@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import useSWR from 'swr';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -25,10 +24,19 @@ interface Billboard {
   isAvailable: boolean;
 }
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = async (url: string) => {
+  const response = await fetch(url);
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Impossible de charger les panneaux');
+  }
+
+  return data;
+};
 
 export default function BillboardsPage() {
-  const { data, isLoading } = useSWR<{ billboards: Billboard[] }>(
+  const { data, error, isLoading } = useSWR<{ billboards: Billboard[] }>(
     '/api/v1/billboards',
     fetcher
   );
@@ -37,6 +45,35 @@ export default function BillboardsPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+            Panneaux Publicitaires
+          </h1>
+          <p className="text-slate-600 dark:text-slate-400 mt-1">
+            Diffusez votre publicité sur les panneaux numériques de Dakar
+          </p>
+        </div>
+
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-6 space-y-3">
+            <p className="font-medium text-red-900">
+              Impossible de charger les panneaux pour le moment.
+            </p>
+            <p className="text-sm text-red-700">
+              Le service billboard est en cours de redémarrage. Réessayez dans quelques secondes.
+            </p>
+            <Button onClick={() => window.location.reload()} variant="outline">
+              Réessayer
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -99,7 +136,7 @@ export default function BillboardsPage() {
       <div>
         <h2 className="text-xl font-semibold mb-4">Panneaux disponibles</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {data?.billboards.map((billboard) => (
+          {data?.billboards?.map((billboard) => (
             <Card
               key={billboard.id}
               className={`overflow-hidden hover:shadow-lg transition-shadow ${

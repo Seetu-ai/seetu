@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { prisma } from '@/lib/prisma';
+import prisma from '@/lib/prisma';
 import crypto from 'crypto';
 
 // Superadmin emails (same pattern as existing admin routes)
